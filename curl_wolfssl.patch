@@ -1,0 +1,1624 @@
+diff -ru curl-7.40.0/CHANGES curl_with_wolfssl/CHANGES
+--- curl-7.40.0/CHANGES	2015-01-08 01:18:18.000000000 -0700
++++ curl_with_wolfssl/CHANGES	2015-01-26 08:12:06.000000000 -0700
+@@ -419,7 +419,7 @@
+ 
+ - schannel: Prefer 'CURLcode result' for curl result codes
+ 
+-- cyassl: Prefer 'CURLcode result' for curl result codes
++- wolfssl: Prefer 'CURLcode result' for curl result codes
+ 
+ - tool_xattr: Use 'CURLcode result' for curl result codes
+ 
+@@ -2880,7 +2880,7 @@
+ 
+   SSL: Remove SSLv3 from SSL default due to POODLE attack
+   
+-  - Remove SSLv3 from SSL default in darwinssl, schannel, cyassl, nss,
++  - Remove SSLv3 from SSL default in darwinssl, schannel, wolfssl, nss,
+   openssl effectively making the default TLS 1.x. axTLS is not affected
+   since it supports only TLS, and gnutls is not affected since it already
+   defaults to TLS 1.x.
+@@ -4586,13 +4586,13 @@
+ Dan Fandrich (31 Jul 2014)
+ - axtls: define curlssl_random using axTLS's PRNG
+ 
+-- cyassl: fix the test for ASN_NO_SIGNER_E
++- wolfssl: fix the test for ASN_NO_SIGNER_E
+   
+-  It's an enum so a macro test won't work. The CyaSSL changelog doesn't
++  It's an enum so a macro test won't work. The wolfSSL changelog doesn't
+   say exactly when this error code was introduced, but it's likely
+   to be 2.7.0.
+ 
+-- cyassl: use RNG_GenerateBlock to generate a good random number
++- wolfssl: use wc_RNG_GenerateBlock to generate a good random number
+ 
+ - opts: fixed some typos
+ 
+@@ -4617,12 +4617,12 @@
+ 
+   curl_tlsinfo -> curl_tlssessioninfo
+ 
+-- cyassl: use the default (weeker) random
++- wolfssl: use the default (weeker) random
+   
+   I couldn't find any dedicated function in its API to get a "good" random
+   with.
+ 
+-- cyassl: made it compile with version 2.0.6 again
++- wolfssl: made it compile with version 2.0.6 again
+   
+   ASN_NO_SIGNER_E didn't exist back then!
+ 
+@@ -4748,9 +4748,9 @@
+   basically when they are about http2 specific things.
+ 
+ Dan Fandrich (23 Jul 2014)
+-- cyassl.c: return the correct error code on no CA cert
++- wolfssl.c: return the correct error code on no CA cert
+   
+-  CyaSSL 3.0.0 returns a unique error code if no CA cert is available,
++  wolfSSL 3.0.0 returns a unique error code if no CA cert is available,
+   so translate that into CURLE_SSL_CACERT_BADFILE when peer verification
+   is requested.
+ 
+diff -ru curl-7.40.0/CMakeLists.txt curl_with_wolfssl/CMakeLists.txt
+--- curl-7.40.0/CMakeLists.txt	2014-12-28 06:36:05.000000000 -0700
++++ curl_with_wolfssl/CMakeLists.txt	2015-01-21 10:16:56.000000000 -0700
+@@ -1008,7 +1008,7 @@
+   add_subdirectory(tests)
+ endif()
+ 
+-# TODO support GNUTLS, NSS, POLARSSL, AXTLS, CYASSL, WINSSL, DARWINSSL
++# TODO support GNUTLS, NSS, POLARSSL, AXTLS, WOLFSSL, WINSSL, DARWINSSL
+ if(USE_OPENSSL)
+   set(SSL_ENABLED 1)
+ endif()
+diff -ru curl-7.40.0/Makefile.in curl_with_wolfssl/Makefile.in
+--- curl-7.40.0/Makefile.in	2015-01-08 01:17:41.000000000 -0700
++++ curl_with_wolfssl/Makefile.in	2015-01-21 10:19:25.000000000 -0700
+@@ -408,7 +408,7 @@
+ SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
+ USE_ARES = @USE_ARES@
+ USE_AXTLS = @USE_AXTLS@
+-USE_CYASSL = @USE_CYASSL@
++USE_WOLFSSL = @USE_WOLFSSL@
+ USE_DARWINSSL = @USE_DARWINSSL@
+ USE_GNUTLS = @USE_GNUTLS@
+ USE_GNUTLS_NETTLE = @USE_GNUTLS_NETTLE@
+@@ -582,11 +582,11 @@
+ pkgconfig_DATA = libcurl.pc
+ LIB_VTLS_CFILES = vtls/openssl.c vtls/gtls.c vtls/vtls.c vtls/nss.c     \
+   vtls/polarssl.c vtls/polarssl_threadlock.c vtls/axtls.c               \
+-  vtls/cyassl.c vtls/curl_schannel.c vtls/curl_darwinssl.c vtls/gskit.c
++  vtls/wolfssl.c vtls/curl_schannel.c vtls/curl_darwinssl.c vtls/gskit.c
+ 
+ LIB_VTLS_HFILES = vtls/openssl.h vtls/vtls.h vtls/gtls.h                \
+   vtls/nssg.h vtls/polarssl.h vtls/polarssl_threadlock.h vtls/axtls.h   \
+-  vtls/cyassl.h vtls/curl_schannel.h vtls/curl_darwinssl.h vtls/gskit.h
++  vtls/wolfssl.h vtls/curl_schannel.h vtls/curl_darwinssl.h vtls/gskit.h
+ 
+ LIB_CFILES = file.c timeval.c base64.c hostip.c progress.c formdata.c   \
+   cookie.c http.c sendf.c ftp.c url.c dict.c if2ip.c speedcheck.c       \
+diff -ru curl-7.40.0/configure curl_with_wolfssl/configure
+--- curl-7.40.0/configure	2014-12-28 06:36:13.000000000 -0700
++++ curl_with_wolfssl/configure	2015-01-26 08:54:12.000000000 -0700
+@@ -918,7 +918,7 @@
+ USE_AXTLS
+ NSS_LIBS
+ USE_NSS
+-USE_CYASSL
++USE_WOLFSSL
+ USE_POLARSSL
+ HAVE_GNUTLS_SRP
+ USE_GNUTLS_NETTLE
+@@ -1147,7 +1147,7 @@
+ with_random
+ with_gnutls
+ with_polarssl
+-with_cyassl
++with_wolfssl
+ with_nss
+ with_axtls
+ with_ca_bundle
+@@ -1927,9 +1927,9 @@
+   --with-polarssl=PATH    where to look for PolarSSL, PATH points to the
+                           installation root
+   --without-polarssl      disable PolarSSL detection
+-  --with-cyassl=PATH      where to look for CyaSSL, PATH points to the
++  --with-wolfssl=PATH      where to look for wolfSSL, PATH points to the
+                           installation root (default: system lib default)
+-  --without-cyassl        disable CyaSSL detection
++  --without-wolfssl        disable wolfSSL detection
+   --with-nss=PATH         where to look for NSS, PATH points to the
+                           installation root
+   --without-nss           disable NSS detection
+@@ -5551,7 +5551,7 @@
+ 
+ 
+ 
+-    curl_ssl_msg="no      (--with-{ssl,gnutls,nss,polarssl,cyassl,axtls,winssl,darwinssl} )"
++    curl_ssl_msg="no      (--with-{ssl,gnutls,nss,polarssl,wolfssl,axtls,winssl,darwinssl} )"
+     curl_ssh_msg="no      (--with-libssh2)"
+    curl_zlib_msg="no      (--with-zlib)"
+     curl_gss_msg="no      (--with-gssapi)"
+@@ -21946,8 +21946,8 @@
+ 
+ 
+ 
+-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for yaSSL using OpenSSL compatibility mode" >&5
+-$as_echo_n "checking for yaSSL using OpenSSL compatibility mode... " >&6; }
++    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for wolfSSL using OpenSSL compatibility mode" >&5
++$as_echo_n "checking for wolfSSL using OpenSSL compatibility mode... " >&6; }
+     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+ /* end confdefs.h.  */
+ 
+@@ -21957,10 +21957,10 @@
+ int main (void)
+ {
+ 
+-#if defined(YASSL_VERSION) && defined(OPENSSL_VERSION_NUMBER)
++#if defined(WOLFSSL_VERSION) && defined(OPENSSL_VERSION_NUMBER)
+         int dummy = SSL_ERROR_NONE;
+ #else
+-        Not the yaSSL OpenSSL compatibility header.
++        Not the wolfSSL OpenSSL compatibility header.
+ #endif
+ 
+  ;
+@@ -21974,10 +21974,10 @@
+ $as_echo "yes" >&6; }
+ 
+ cat >>confdefs.h <<_ACEOF
+-#define USE_YASSLEMUL 1
++#define USE_WOLFSSLEMUL 1
+ _ACEOF
+ 
+-      curl_ssl_msg="enabled (OpenSSL emulation by yaSSL)"
++      curl_ssl_msg="enabled (OpenSSL emulation by wolfSSL)"
+ 
+ else
+ 
+@@ -23333,34 +23333,34 @@
+ fi
+ 
+ 
+-OPT_CYASSL=no
++OPT_WOLFSSL=no
+ 
+ _cppflags=$CPPFLAGS
+ _ldflags=$LDFLAGS
+ 
+-# Check whether --with-cyassl was given.
+-if test "${with_cyassl+set}" = set; then :
+-  withval=$with_cyassl; OPT_CYASSL=$withval
++# Check whether --with-wolfssl was given.
++if test "${with_wolfssl+set}" = set; then :
++  withval=$with_wolfssl; OPT_WOLFSSL=$withval
+ fi
+ 
+ 
+ if test "$curl_ssl_msg" = "$init_ssl_msg"; then
+ 
+-  if test X"$OPT_CYASSL" != Xno; then
++  if test X"$OPT_WOLFSSL" != Xno; then
+ 
+-    if test "$OPT_CYASSL" = "yes"; then
+-      OPT_CYASSL=""
++    if test "$OPT_WOLFSSL" = "yes"; then
++      OPT_WOLFSSL=""
+     fi
+ 
+-    if test -z "$OPT_CYASSL" ; then
++    if test -z "$OPT_WOLFSSL" ; then
+ 
+-      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for CyaSSL_Init in -lcyassl" >&5
+-$as_echo_n "checking for CyaSSL_Init in -lcyassl... " >&6; }
+-if ${ac_cv_lib_cyassl_CyaSSL_Init+:} false; then :
++      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for wolfSSL_Init in -lwolfssl" >&5
++$as_echo_n "checking for wolfSSL_Init in -lwolfssl... " >&6; }
++if ${ac_cv_lib_wolfssl_wolfSSL_Init+:} false; then :
+   $as_echo_n "(cached) " >&6
+ else
+   ac_check_lib_save_LIBS=$LIBS
+-LIBS="-lcyassl  $LIBS"
++LIBS="-lwolfssl  $LIBS"
+ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+ /* end confdefs.h.  */
+ 
+@@ -23368,35 +23368,35 @@
+ #ifdef __cplusplus
+ extern "C"
+ #endif
+-char CyaSSL_Init ();
++char wolfSSL_Init ();
+ int main (void)
+ {
+-return CyaSSL_Init ();
++return wolfSSL_Init ();
+  ;
+  return 0;
+ }
+ _ACEOF
+ if ac_fn_c_try_link "$LINENO"; then :
+-  ac_cv_lib_cyassl_CyaSSL_Init=yes
++  ac_cv_lib_wolfssl_wolfSSL_Init=yes
+ else
+-  ac_cv_lib_cyassl_CyaSSL_Init=no
++  ac_cv_lib_wolfssl_wolfSSL_Init=no
+ fi
+ rm -f core conftest.err conftest.$ac_objext \
+     conftest$ac_exeext conftest.$ac_ext
+ LIBS=$ac_check_lib_save_LIBS
+ fi
+-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_cyassl_CyaSSL_Init" >&5
+-$as_echo "$ac_cv_lib_cyassl_CyaSSL_Init" >&6; }
+-if test "x$ac_cv_lib_cyassl_CyaSSL_Init" = xyes; then :
++{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_wolfssl_wolfSSL_Init" >&5
++$as_echo "$ac_cv_lib_wolfssl_wolfSSL_Init" >&6; }
++if test "x$ac_cv_lib_wolfssl_wolfSSL_Init" = xyes; then :
+ 
+ 
+-$as_echo "#define USE_CYASSL 1" >>confdefs.h
++$as_echo "#define USE_WOLFSSL 1" >>confdefs.h
+ 
+-         USE_CYASSL=1
++         USE_WOLFSSL=1
+ 
+-         CYASSL_ENABLED=1
+-         USE_CYASSL="yes"
+-         curl_ssl_msg="enabled (CyaSSL)"
++         WOLFSSL_ENABLED=1
++         USE_WOLFSSL="yes"
++         curl_ssl_msg="enabled (wolfSSL)"
+ 
+ fi
+ 
+@@ -23405,25 +23405,25 @@
+     addld=""
+     addlib=""
+     addcflags=""
+-    cyassllib=""
++    wolfssllib=""
+ 
+-    if test "x$USE_CYASSL" != "xyes"; then
+-            addld=-L$OPT_CYASSL/lib$libsuff
+-      addcflags=-I$OPT_CYASSL/include
+-      cyassllib=$OPT_CYASSL/lib$libsuff
++    if test "x$USE_WOLFSSL" != "xyes"; then
++            addld=-L$OPT_WOLFSSL/lib$libsuff
++      addcflags=-I$OPT_WOLFSSL/include
++      wolfssllib=$OPT_WOLFSSL/lib$libsuff
+ 
+       LDFLAGS="$LDFLAGS $addld"
+       if test "$addcflags" != "-I/usr/include"; then
+          CPPFLAGS="$CPPFLAGS $addcflags"
+       fi
+ 
+-      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for CyaSSL_Init in -lcyassl" >&5
+-$as_echo_n "checking for CyaSSL_Init in -lcyassl... " >&6; }
+-if ${ac_cv_lib_cyassl_CyaSSL_Init+:} false; then :
++      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for wolfSSL_Init in -lwolfssl" >&5
++$as_echo_n "checking for wolfSSL_Init in -lwolfssl... " >&6; }
++if ${ac_cv_lib_wolfssl_wolfSSL_Init+:} false; then :
+   $as_echo_n "(cached) " >&6
+ else
+   ac_check_lib_save_LIBS=$LIBS
+-LIBS="-lcyassl  $LIBS"
++LIBS="-lwolfssl  $LIBS"
+ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+ /* end confdefs.h.  */
+ 
+@@ -23431,35 +23431,35 @@
+ #ifdef __cplusplus
+ extern "C"
+ #endif
+-char CyaSSL_Init ();
++char wolfSSL_Init ();
+ int main (void)
+ {
+-return CyaSSL_Init ();
++return wolfSSL_Init ();
+  ;
+  return 0;
+ }
+ _ACEOF
+ if ac_fn_c_try_link "$LINENO"; then :
+-  ac_cv_lib_cyassl_CyaSSL_Init=yes
++  ac_cv_lib_wolfssl_wolfSSL_Init=yes
+ else
+-  ac_cv_lib_cyassl_CyaSSL_Init=no
++  ac_cv_lib_wolfssl_wolfSSL_Init=no
+ fi
+ rm -f core conftest.err conftest.$ac_objext \
+     conftest$ac_exeext conftest.$ac_ext
+ LIBS=$ac_check_lib_save_LIBS
+ fi
+-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_cyassl_CyaSSL_Init" >&5
+-$as_echo "$ac_cv_lib_cyassl_CyaSSL_Init" >&6; }
+-if test "x$ac_cv_lib_cyassl_CyaSSL_Init" = xyes; then :
++{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_wolfssl_wolfSSL_Init" >&5
++$as_echo "$ac_cv_lib_wolfssl_wolfSSL_Init" >&6; }
++if test "x$ac_cv_lib_wolfssl_wolfSSL_Init" = xyes; then :
+ 
+ 
+-$as_echo "#define USE_CYASSL 1" >>confdefs.h
++$as_echo "#define USE_WOLFSSL 1" >>confdefs.h
+ 
+-       USE_CYASSL=1
++       USE_WOLFSSL=1
+ 
+-       CYASSL_ENABLED=1
+-       USE_CYASSL="yes"
+-       curl_ssl_msg="enabled (CyaSSL)"
++       WOLFSSL_ENABLED=1
++       USE_WOLFSSL="yes"
++       curl_ssl_msg="enabled (wolfSSL)"
+ 
+ else
+ 
+@@ -23470,9 +23470,9 @@
+ 
+     fi
+ 
+-    if test "x$USE_CYASSL" = "xyes"; then
+-      { $as_echo "$as_me:${as_lineno-$LINENO}: detected CyaSSL" >&5
+-$as_echo "$as_me: detected CyaSSL" >&6;}
++    if test "x$USE_WOLFSSL" = "xyes"; then
++      { $as_echo "$as_me:${as_lineno-$LINENO}: detected wolfSSL" >&5
++$as_echo "$as_me: detected wolfSSL" >&6;}
+ 
+             # The cast to long int works around a bug in the HP C Compiler
+ # version HP92453-01 B.11.11.23709.GP, which incorrectly rejects
+@@ -23508,12 +23508,12 @@
+ 
+ 
+ 
+-            for ac_header in cyassl/error-ssl.h
++            for ac_header in wolfssl/error-ssl.h
+ do :
+-  ac_fn_c_check_header_mongrel "$LINENO" "cyassl/error-ssl.h" "ac_cv_header_cyassl_error_ssl_h" "$ac_includes_default"
+-if test "x$ac_cv_header_cyassl_error_ssl_h" = xyes; then :
++  ac_fn_c_check_header_mongrel "$LINENO" "wolfssl/error-ssl.h" "ac_cv_header_wolfssl_error_ssl_h" "$ac_includes_default"
++if test "x$ac_cv_header_wolfssl_error_ssl_h" = xyes; then :
+   cat >>confdefs.h <<_ACEOF
+-#define HAVE_CYASSL_ERROR_SSL_H 1
++#define HAVE_WOLFSSL_ERROR_SSL_H 1
+ _ACEOF
+ 
+ fi
+@@ -23521,14 +23521,14 @@
+ done
+ 
+ 
+-      LIBS="-lcyassl -lm $LIBS"
++      LIBS="-lwolfssl -lm $LIBS"
+ 
+-      if test -n "$cyassllib"; then
++      if test -n "$wolfssllib"; then
+                                         if test "x$cross_compiling" != "xyes"; then
+-          LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$cyassllib"
++          LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$wolfssllib"
+           export LD_LIBRARY_PATH
+-          { $as_echo "$as_me:${as_lineno-$LINENO}: Added $cyassllib to LD_LIBRARY_PATH" >&5
+-$as_echo "$as_me: Added $cyassllib to LD_LIBRARY_PATH" >&6;}
++          { $as_echo "$as_me:${as_lineno-$LINENO}: Added $wolfssllib to LD_LIBRARY_PATH" >&5
++$as_echo "$as_me: Added $wolfssllib to LD_LIBRARY_PATH" >&6;}
+         fi
+       fi
+ 
+@@ -23889,11 +23889,11 @@
+   fi
+ fi
+ 
+-if test "x$OPENSSL_ENABLED$GNUTLS_ENABLED$NSS_ENABLED$POLARSSL_ENABLED$AXTLS_ENABLED$CYASSL_ENABLED$WINSSL_ENABLED$DARWINSSL_ENABLED" = "x"; then
++if test "x$OPENSSL_ENABLED$GNUTLS_ENABLED$NSS_ENABLED$POLARSSL_ENABLED$AXTLS_ENABLED$WOLFSSL_ENABLED$WINSSL_ENABLED$DARWINSSL_ENABLED" = "x"; then
+   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: SSL disabled, you will not be able to use HTTPS, FTPS, NTLM and more." >&5
+ $as_echo "$as_me: WARNING: SSL disabled, you will not be able to use HTTPS, FTPS, NTLM and more." >&2;}
+-  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Use --with-ssl, --with-gnutls, --with-polarssl, --with-cyassl, --with-nss, --with-axtls, --with-winssl, or --with-darwinssl to address this." >&5
+-$as_echo "$as_me: WARNING: Use --with-ssl, --with-gnutls, --with-polarssl, --with-cyassl, --with-nss, --with-axtls, --with-winssl, or --with-darwinssl to address this." >&2;}
++  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Use --with-ssl, --with-gnutls, --with-polarssl, --with-wolfssl, --with-nss, --with-axtls, --with-winssl, or --with-darwinssl to address this." >&5
++$as_echo "$as_me: WARNING: Use --with-ssl, --with-gnutls, --with-polarssl, --with-wolfssl, --with-nss, --with-axtls, --with-winssl, or --with-darwinssl to address this." >&2;}
+ else
+   # SSL is enabled, genericly
+ 
+@@ -24902,8 +24902,8 @@
+           versioned_symbols_flavour="NSS_"
+         elif test "x$POLARSSL_ENABLED" = "x1"; then
+           versioned_symbols_flavour="POLARSSL_"
+-        elif test "x$CYASSL_ENABLED" = "x1"; then
+-          versioned_symbols_flavour="CYASSL_"
++        elif test "x$WOLFSSL_ENABLED" = "x1"; then
++          versioned_symbols_flavour="WOLFSSL_"
+         elif test "x$AXTLS_ENABLED" = "x1"; then
+           versioned_symbols_flavour="AXTLS_"
+         elif test "x$WINSSL_ENABLED" = "x1"; then
+diff -ru curl-7.40.0/configure.ac curl_with_wolfssl/configure.ac
+--- curl-7.40.0/configure.ac	2014-12-28 06:36:05.000000000 -0700
++++ curl_with_wolfssl/configure.ac	2015-01-26 08:53:07.000000000 -0700
+@@ -147,7 +147,7 @@
+ 
+ dnl
+ dnl initialize all the info variables
+-    curl_ssl_msg="no      (--with-{ssl,gnutls,nss,polarssl,cyassl,axtls,winssl,darwinssl} )"
++    curl_ssl_msg="no      (--with-{ssl,gnutls,nss,polarssl,wolfssl,axtls,winssl,darwinssl} )"
+     curl_ssh_msg="no      (--with-libssh2)"
+    curl_zlib_msg="no      (--with-zlib)"
+     curl_gss_msg="no      (--with-gssapi)"
+@@ -1593,22 +1593,22 @@
+     dnl OpenSSL emulation layer. We still leave everything else believing
+     dnl and acting like OpenSSL.
+ 
+-    AC_MSG_CHECKING([for yaSSL using OpenSSL compatibility mode])
++    AC_MSG_CHECKING([for wolfSSL using OpenSSL compatibility mode])
+     AC_COMPILE_IFELSE([
+       AC_LANG_PROGRAM([[
+ #include <openssl/ssl.h>
+       ]],[[
+-#if defined(YASSL_VERSION) && defined(OPENSSL_VERSION_NUMBER)
++#if defined(WOLFSSL_VERSION) && defined(OPENSSL_VERSION_NUMBER)
+         int dummy = SSL_ERROR_NONE;
+ #else
+-        Not the yaSSL OpenSSL compatibility header.
++        Not the wolfSSL OpenSSL compatibility header.
+ #endif
+       ]])
+     ],[
+       AC_MSG_RESULT([yes])
+-      AC_DEFINE_UNQUOTED(USE_YASSLEMUL, 1,
+-        [Define to 1 if using yaSSL in OpenSSL compatibility mode.])
+-      curl_ssl_msg="enabled (OpenSSL emulation by yaSSL)"
++      AC_DEFINE_UNQUOTED(USE_WOLFSSLEMUL, 1,
++        [Define to 1 if using wolfSSL in OpenSSL compatibility mode.])
++      curl_ssl_msg="enabled (OpenSSL emulation by wolfSSL)"
+     ],[
+       AC_MSG_RESULT([no])
+     ])
+@@ -1922,64 +1922,64 @@
+ fi
+ 
+ dnl ----------------------------------------------------
+-dnl check for CyaSSL
++dnl check for wolfSSL
+ dnl ----------------------------------------------------
+ 
+-dnl Default to compiler & linker defaults for CyaSSL files & libraries.
+-OPT_CYASSL=no
++dnl Default to compiler & linker defaults for wolfSSL files & libraries.
++OPT_WOLFSSL=no
+ 
+ _cppflags=$CPPFLAGS
+ _ldflags=$LDFLAGS
+-AC_ARG_WITH(cyassl,dnl
+-AC_HELP_STRING([--with-cyassl=PATH],[where to look for CyaSSL, PATH points to the installation root (default: system lib default)])
+-AC_HELP_STRING([--without-cyassl], [disable CyaSSL detection]),
+-  OPT_CYASSL=$withval)
++AC_ARG_WITH(wolfssl,dnl
++AC_HELP_STRING([--with-wolfssl=PATH],[where to look for wolfSSL, PATH points to the installation root (default: system lib default)])
++AC_HELP_STRING([--without-wolfssl], [disable wolfSSL detection]),
++  OPT_WOLFSSL=$withval)
+ 
+ if test "$curl_ssl_msg" = "$init_ssl_msg"; then
+ 
+-  if test X"$OPT_CYASSL" != Xno; then
++  if test X"$OPT_WOLFSSL" != Xno; then
+ 
+-    if test "$OPT_CYASSL" = "yes"; then
+-      OPT_CYASSL=""
++    if test "$OPT_WOLFSSL" = "yes"; then
++      OPT_WOLFSSL=""
+     fi
+ 
+-    if test -z "$OPT_CYASSL" ; then
++    if test -z "$OPT_WOLFSSL" ; then
+       dnl check for lib in system default first
+ 
+-      AC_CHECK_LIB(cyassl, CyaSSL_Init,
+-      dnl libcyassl found, set the variable
++      AC_CHECK_LIB(wolfssl, wolfSSL_Init,
++      dnl libwolfssl found, set the variable
+        [
+-         AC_DEFINE(USE_CYASSL, 1, [if CyaSSL is enabled])
+-         AC_SUBST(USE_CYASSL, [1])
+-         CYASSL_ENABLED=1
+-         USE_CYASSL="yes"
+-         curl_ssl_msg="enabled (CyaSSL)"
++         AC_DEFINE(USE_WOLFSSL, 1, [if wolfSSL is enabled])
++         AC_SUBST(USE_WOLFSSL, [1])
++         WOLFSSL_ENABLED=1
++         USE_WOLFSSL="yes"
++         curl_ssl_msg="enabled (wolfSSL)"
+         ])
+     fi
+ 
+     addld=""
+     addlib=""
+     addcflags=""
+-    cyassllib=""
++    wolfssllib=""
+ 
+-    if test "x$USE_CYASSL" != "xyes"; then
++    if test "x$USE_WOLFSSL" != "xyes"; then
+       dnl add the path and test again
+-      addld=-L$OPT_CYASSL/lib$libsuff
+-      addcflags=-I$OPT_CYASSL/include
+-      cyassllib=$OPT_CYASSL/lib$libsuff
++      addld=-L$OPT_WOLFSSL/lib$libsuff
++      addcflags=-I$OPT_WOLFSSL/include
++      wolfssllib=$OPT_WOLFSSL/lib$libsuff
+ 
+       LDFLAGS="$LDFLAGS $addld"
+       if test "$addcflags" != "-I/usr/include"; then
+          CPPFLAGS="$CPPFLAGS $addcflags"
+       fi
+ 
+-      AC_CHECK_LIB(cyassl, CyaSSL_Init,
++      AC_CHECK_LIB(wolfssl, wolfSSL_Init,
+        [
+-       AC_DEFINE(USE_CYASSL, 1, [if CyaSSL is enabled])
+-       AC_SUBST(USE_CYASSL, [1])
+-       CYASSL_ENABLED=1
+-       USE_CYASSL="yes"
+-       curl_ssl_msg="enabled (CyaSSL)"
++       AC_DEFINE(USE_WOLFSSL, 1, [if wolfSSL is enabled])
++       AC_SUBST(USE_WOLFSSL, [1])
++       WOLFSSL_ENABLED=1
++       USE_WOLFSSL="yes"
++       curl_ssl_msg="enabled (wolfSSL)"
+        ],
+        [
+          CPPFLAGS=$_cppflags
+@@ -1987,32 +1987,32 @@
+        ])
+     fi
+ 
+-    if test "x$USE_CYASSL" = "xyes"; then
+-      AC_MSG_NOTICE([detected CyaSSL])
++    if test "x$USE_WOLFSSL" = "xyes"; then
++      AC_MSG_NOTICE([detected wolfSSL])
+ 
+-      dnl cyassl/ctaocrypt/types.h needs SIZEOF_LONG_LONG defined!
++      dnl wolfssl/wolfcrypt/types.h needs SIZEOF_LONG_LONG defined!
+       AC_CHECK_SIZEOF(long long)
+ 
+       dnl Versions since at least 2.9.4 renamed error.h to error-ssl.h
+-      AC_CHECK_HEADERS(cyassl/error-ssl.h)
++      AC_CHECK_HEADERS(wolfssl/error-ssl.h)
+ 
+-      LIBS="-lcyassl -lm $LIBS"
++      LIBS="-lwolfssl -lm $LIBS"
+ 
+-      if test -n "$cyassllib"; then
++      if test -n "$wolfssllib"; then
+         dnl when shared libs were found in a path that the run-time
+         dnl linker doesn't search through, we need to add it to
+         dnl LD_LIBRARY_PATH to prevent further configure tests to fail
+         dnl due to this
+         if test "x$cross_compiling" != "xyes"; then
+-          LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$cyassllib"
++          LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$wolfssllib"
+           export LD_LIBRARY_PATH
+-          AC_MSG_NOTICE([Added $cyassllib to LD_LIBRARY_PATH])
++          AC_MSG_NOTICE([Added $wolfssllib to LD_LIBRARY_PATH])
+         fi
+       fi
+ 
+     fi
+ 
+-  fi dnl CyaSSL not disabled
++  fi dnl wolfSSL not disabled
+ 
+ fi
+ 
+@@ -2174,9 +2174,9 @@
+   fi
+ fi
+ 
+-if test "x$OPENSSL_ENABLED$GNUTLS_ENABLED$NSS_ENABLED$POLARSSL_ENABLED$AXTLS_ENABLED$CYASSL_ENABLED$WINSSL_ENABLED$DARWINSSL_ENABLED" = "x"; then
++if test "x$OPENSSL_ENABLED$GNUTLS_ENABLED$NSS_ENABLED$POLARSSL_ENABLED$AXTLS_ENABLED$WOLFSSL_ENABLED$WINSSL_ENABLED$DARWINSSL_ENABLED" = "x"; then
+   AC_MSG_WARN([SSL disabled, you will not be able to use HTTPS, FTPS, NTLM and more.])
+-  AC_MSG_WARN([Use --with-ssl, --with-gnutls, --with-polarssl, --with-cyassl, --with-nss, --with-axtls, --with-winssl, or --with-darwinssl to address this.])
++  AC_MSG_WARN([Use --with-ssl, --with-gnutls, --with-polarssl, --with-wolfssl, --with-nss, --with-axtls, --with-winssl, or --with-darwinssl to address this.])
+ else
+   # SSL is enabled, genericly
+   AC_SUBST(SSL_ENABLED)
+@@ -2467,8 +2467,8 @@
+           versioned_symbols_flavour="NSS_"
+         elif test "x$POLARSSL_ENABLED" = "x1"; then
+           versioned_symbols_flavour="POLARSSL_"
+-        elif test "x$CYASSL_ENABLED" = "x1"; then
+-          versioned_symbols_flavour="CYASSL_"
++        elif test "x$WOLFSSL_ENABLED" = "x1"; then
++          versioned_symbols_flavour="WOLFSSL_"
+         elif test "x$AXTLS_ENABLED" = "x1"; then
+           versioned_symbols_flavour="AXTLS_"
+         elif test "x$WINSSL_ENABLED" = "x1"; then
+diff -ru curl-7.40.0/docs/INSTALL curl_with_wolfssl/docs/INSTALL
+--- curl-7.40.0/docs/INSTALL	2014-12-28 06:36:05.000000000 -0700
++++ curl_with_wolfssl/docs/INSTALL	2015-01-21 10:25:40.000000000 -0700
+@@ -127,8 +127,8 @@
+      To build with GnuTLS for SSL/TLS, use both --without-ssl and
+      --with-gnutls.
+ 
+-     To build with Cyassl for SSL/TLS, use both --without-ssl and
+-     --with-cyassl.
++     To build with wolfSSL for SSL/TLS, use both --without-ssl and
++     --with-wolfssl.
+ 
+      To build with NSS for SSL/TLS, use both --without-ssl and --with-nss.
+ 
+diff -ru curl-7.40.0/docs/INTERNALS curl_with_wolfssl/docs/INTERNALS
+--- curl-7.40.0/docs/INTERNALS	2014-12-02 18:16:27.000000000 -0700
++++ curl_with_wolfssl/docs/INTERNALS	2015-01-21 10:01:23.000000000 -0700
+@@ -40,7 +40,7 @@
+  libssh2      0.16
+  c-ares       1.6.0
+  libidn       0.4.1
+- cyassl       2.0.0
++ wolfssl       2.0.0
+  openldap     2.0
+  MIT Kerberos 1.2.4
+  GSKit        V5R3M0
+diff -ru curl-7.40.0/docs/Makefile.in curl_with_wolfssl/docs/Makefile.in
+--- curl-7.40.0/docs/Makefile.in	2014-12-28 06:36:13.000000000 -0700
++++ curl_with_wolfssl/docs/Makefile.in	2015-01-21 10:17:59.000000000 -0700
+@@ -355,7 +355,7 @@
+ SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
+ USE_ARES = @USE_ARES@
+ USE_AXTLS = @USE_AXTLS@
+-USE_CYASSL = @USE_CYASSL@
++USE_WOLFSSL = @USE_WOLFSSL@
+ USE_DARWINSSL = @USE_DARWINSSL@
+ USE_GNUTLS = @USE_GNUTLS@
+ USE_GNUTLS_NETTLE = @USE_GNUTLS_NETTLE@
+diff -ru curl-7.40.0/docs/examples/Makefile.in curl_with_wolfssl/docs/examples/Makefile.in
+--- curl-7.40.0/docs/examples/Makefile.in	2014-12-28 06:36:13.000000000 -0700
++++ curl_with_wolfssl/docs/examples/Makefile.in	2015-01-21 10:17:11.000000000 -0700
+@@ -873,7 +873,7 @@
+ SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
+ USE_ARES = @USE_ARES@
+ USE_AXTLS = @USE_AXTLS@
+-USE_CYASSL = @USE_CYASSL@
++USE_WOLFSSL = @USE_WOLFSSL@
+ USE_DARWINSSL = @USE_DARWINSSL@
+ USE_GNUTLS = @USE_GNUTLS@
+ USE_GNUTLS_NETTLE = @USE_GNUTLS_NETTLE@
+diff -ru curl-7.40.0/docs/libcurl/Makefile.in curl_with_wolfssl/docs/libcurl/Makefile.in
+--- curl-7.40.0/docs/libcurl/Makefile.in	2014-12-28 06:36:13.000000000 -0700
++++ curl_with_wolfssl/docs/libcurl/Makefile.in	2015-01-21 10:17:24.000000000 -0700
+@@ -357,7 +357,7 @@
+ SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
+ USE_ARES = @USE_ARES@
+ USE_AXTLS = @USE_AXTLS@
+-USE_CYASSL = @USE_CYASSL@
++USE_WOLFSSL = @USE_WOLFSSL@
+ USE_DARWINSSL = @USE_DARWINSSL@
+ USE_GNUTLS = @USE_GNUTLS@
+ USE_GNUTLS_NETTLE = @USE_GNUTLS_NETTLE@
+diff -ru curl-7.40.0/docs/libcurl/opts/Makefile.in curl_with_wolfssl/docs/libcurl/opts/Makefile.in
+--- curl-7.40.0/docs/libcurl/opts/Makefile.in	2014-12-28 06:36:13.000000000 -0700
++++ curl_with_wolfssl/docs/libcurl/opts/Makefile.in	2015-01-21 10:24:35.000000000 -0700
+@@ -295,7 +295,7 @@
+ SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
+ USE_ARES = @USE_ARES@
+ USE_AXTLS = @USE_AXTLS@
+-USE_CYASSL = @USE_CYASSL@
++USE_WOLFSSL = @USE_WOLFSSL@
+ USE_DARWINSSL = @USE_DARWINSSL@
+ USE_GNUTLS = @USE_GNUTLS@
+ USE_GNUTLS_NETTLE = @USE_GNUTLS_NETTLE@
+diff -ru curl-7.40.0/docs/libcurl/symbols-in-versions curl_with_wolfssl/docs/libcurl/symbols-in-versions
+--- curl-7.40.0/docs/libcurl/symbols-in-versions	2014-12-03 18:52:19.000000000 -0700
++++ curl_with_wolfssl/docs/libcurl/symbols-in-versions	2015-01-21 10:17:47.000000000 -0700
+@@ -610,7 +610,7 @@
+ CURLSSH_AUTH_PASSWORD           7.16.1
+ CURLSSH_AUTH_PUBLICKEY          7.16.1
+ CURLSSLBACKEND_AXTLS            7.38.0
+-CURLSSLBACKEND_CYASSL           7.34.0
++CURLSSLBACKEND_WOLFSSL          7.34.0
+ CURLSSLBACKEND_DARWINSSL        7.34.0
+ CURLSSLBACKEND_GNUTLS           7.34.0
+ CURLSSLBACKEND_GSKIT            7.34.0
+diff -ru curl-7.40.0/include/Makefile.in curl_with_wolfssl/include/Makefile.in
+--- curl-7.40.0/include/Makefile.in	2014-12-28 06:36:13.000000000 -0700
++++ curl_with_wolfssl/include/Makefile.in	2015-01-21 10:18:44.000000000 -0700
+@@ -303,7 +303,7 @@
+ SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
+ USE_ARES = @USE_ARES@
+ USE_AXTLS = @USE_AXTLS@
+-USE_CYASSL = @USE_CYASSL@
++USE_WOLFSSL = @USE_WOLFSSL@
+ USE_DARWINSSL = @USE_DARWINSSL@
+ USE_GNUTLS = @USE_GNUTLS@
+ USE_GNUTLS_NETTLE = @USE_GNUTLS_NETTLE@
+diff -ru curl-7.40.0/include/curl/Makefile.in curl_with_wolfssl/include/curl/Makefile.in
+--- curl-7.40.0/include/curl/Makefile.in	2014-12-28 06:36:13.000000000 -0700
++++ curl_with_wolfssl/include/curl/Makefile.in	2015-01-21 10:18:30.000000000 -0700
+@@ -290,7 +290,7 @@
+ SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
+ USE_ARES = @USE_ARES@
+ USE_AXTLS = @USE_AXTLS@
+-USE_CYASSL = @USE_CYASSL@
++USE_WOLFSSL = @USE_WOLFSSL@
+ USE_DARWINSSL = @USE_DARWINSSL@
+ USE_GNUTLS = @USE_GNUTLS@
+ USE_GNUTLS_NETTLE = @USE_GNUTLS_NETTLE@
+diff -ru curl-7.40.0/include/curl/curl.h curl_with_wolfssl/include/curl/curl.h
+--- curl-7.40.0/include/curl/curl.h	2014-12-28 06:36:05.000000000 -0700
++++ curl_with_wolfssl/include/curl/curl.h	2015-01-21 10:18:15.000000000 -0700
+@@ -2042,7 +2042,7 @@
+   CURLSSLBACKEND_OBSOLETE4 = 4,  /* Was QSOSSL. */
+   CURLSSLBACKEND_GSKIT = 5,
+   CURLSSLBACKEND_POLARSSL = 6,
+-  CURLSSLBACKEND_CYASSL = 7,
++  CURLSSLBACKEND_WOLFSSL = 7,
+   CURLSSLBACKEND_SCHANNEL = 8,
+   CURLSSLBACKEND_DARWINSSL = 9,
+   CURLSSLBACKEND_AXTLS = 10
+diff -ru curl-7.40.0/lib/Makefile.in curl_with_wolfssl/lib/Makefile.in
+--- curl-7.40.0/lib/Makefile.in	2015-01-07 14:55:28.000000000 -0700
++++ curl_with_wolfssl/lib/Makefile.in	2015-01-21 10:13:17.000000000 -0700
+@@ -222,7 +222,7 @@
+ 	vtls/libcurl_la-vtls.lo vtls/libcurl_la-nss.lo \
+ 	vtls/libcurl_la-polarssl.lo \
+ 	vtls/libcurl_la-polarssl_threadlock.lo \
+-	vtls/libcurl_la-axtls.lo vtls/libcurl_la-cyassl.lo \
++	vtls/libcurl_la-axtls.lo vtls/libcurl_la-wolfssl.lo \
+ 	vtls/libcurl_la-curl_schannel.lo \
+ 	vtls/libcurl_la-curl_darwinssl.lo vtls/libcurl_la-gskit.lo
+ am__objects_3 = $(am__objects_1) $(am__objects_2)
+@@ -292,7 +292,7 @@
+ 	vtls/libcurlu_la-vtls.lo vtls/libcurlu_la-nss.lo \
+ 	vtls/libcurlu_la-polarssl.lo \
+ 	vtls/libcurlu_la-polarssl_threadlock.lo \
+-	vtls/libcurlu_la-axtls.lo vtls/libcurlu_la-cyassl.lo \
++	vtls/libcurlu_la-axtls.lo vtls/libcurlu_la-wolfssl.lo \
+ 	vtls/libcurlu_la-curl_schannel.lo \
+ 	vtls/libcurlu_la-curl_darwinssl.lo vtls/libcurlu_la-gskit.lo
+ am__objects_8 = $(am__objects_6) $(am__objects_7)
+@@ -483,7 +483,7 @@
+ SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
+ USE_ARES = @USE_ARES@
+ USE_AXTLS = @USE_AXTLS@
+-USE_CYASSL = @USE_CYASSL@
++USE_WOLFSSL = @USE_WOLFSSL@
+ USE_DARWINSSL = @USE_DARWINSSL@
+ USE_GNUTLS = @USE_GNUTLS@
+ USE_GNUTLS_NETTLE = @USE_GNUTLS_NETTLE@
+@@ -649,11 +649,11 @@
+ libcurlu_la_CFLAGS = $(AM_CFLAGS)
+ LIB_VTLS_CFILES = vtls/openssl.c vtls/gtls.c vtls/vtls.c vtls/nss.c     \
+   vtls/polarssl.c vtls/polarssl_threadlock.c vtls/axtls.c               \
+-  vtls/cyassl.c vtls/curl_schannel.c vtls/curl_darwinssl.c vtls/gskit.c
++  vtls/wolfssl.c vtls/curl_schannel.c vtls/curl_darwinssl.c vtls/gskit.c
+ 
+ LIB_VTLS_HFILES = vtls/openssl.h vtls/vtls.h vtls/gtls.h                \
+   vtls/nssg.h vtls/polarssl.h vtls/polarssl_threadlock.h vtls/axtls.h   \
+-  vtls/cyassl.h vtls/curl_schannel.h vtls/curl_darwinssl.h vtls/gskit.h
++  vtls/wolfssl.h vtls/curl_schannel.h vtls/curl_darwinssl.h vtls/gskit.h
+ 
+ LIB_CFILES = file.c timeval.c base64.c hostip.c progress.c formdata.c   \
+   cookie.c http.c sendf.c ftp.c url.c dict.c if2ip.c speedcheck.c       \
+@@ -818,7 +818,7 @@
+ 	vtls/$(DEPDIR)/$(am__dirstamp)
+ vtls/libcurl_la-axtls.lo: vtls/$(am__dirstamp) \
+ 	vtls/$(DEPDIR)/$(am__dirstamp)
+-vtls/libcurl_la-cyassl.lo: vtls/$(am__dirstamp) \
++vtls/libcurl_la-wolfssl.lo: vtls/$(am__dirstamp) \
+ 	vtls/$(DEPDIR)/$(am__dirstamp)
+ vtls/libcurl_la-curl_schannel.lo: vtls/$(am__dirstamp) \
+ 	vtls/$(DEPDIR)/$(am__dirstamp)
+@@ -843,7 +843,7 @@
+ 	vtls/$(DEPDIR)/$(am__dirstamp)
+ vtls/libcurlu_la-axtls.lo: vtls/$(am__dirstamp) \
+ 	vtls/$(DEPDIR)/$(am__dirstamp)
+-vtls/libcurlu_la-cyassl.lo: vtls/$(am__dirstamp) \
++vtls/libcurlu_la-wolfssl.lo: vtls/$(am__dirstamp) \
+ 	vtls/$(DEPDIR)/$(am__dirstamp)
+ vtls/libcurlu_la-curl_schannel.lo: vtls/$(am__dirstamp) \
+ 	vtls/$(DEPDIR)/$(am__dirstamp)
+@@ -1074,7 +1074,7 @@
+ @AMDEP_TRUE@@am__include@ @am__quote@vtls/$(DEPDIR)/libcurl_la-axtls.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@vtls/$(DEPDIR)/libcurl_la-curl_darwinssl.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@vtls/$(DEPDIR)/libcurl_la-curl_schannel.Plo@am__quote@
+-@AMDEP_TRUE@@am__include@ @am__quote@vtls/$(DEPDIR)/libcurl_la-cyassl.Plo@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@vtls/$(DEPDIR)/libcurl_la-wolfssl.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@vtls/$(DEPDIR)/libcurl_la-gskit.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@vtls/$(DEPDIR)/libcurl_la-gtls.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@vtls/$(DEPDIR)/libcurl_la-nss.Plo@am__quote@
+@@ -1085,7 +1085,7 @@
+ @AMDEP_TRUE@@am__include@ @am__quote@vtls/$(DEPDIR)/libcurlu_la-axtls.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@vtls/$(DEPDIR)/libcurlu_la-curl_darwinssl.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@vtls/$(DEPDIR)/libcurlu_la-curl_schannel.Plo@am__quote@
+-@AMDEP_TRUE@@am__include@ @am__quote@vtls/$(DEPDIR)/libcurlu_la-cyassl.Plo@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@vtls/$(DEPDIR)/libcurlu_la-wolfssl.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@vtls/$(DEPDIR)/libcurlu_la-gskit.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@vtls/$(DEPDIR)/libcurlu_la-gtls.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@vtls/$(DEPDIR)/libcurlu_la-nss.Plo@am__quote@
+@@ -1895,12 +1895,12 @@
+ @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+ @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurl_la_CPPFLAGS) $(CPPFLAGS) $(libcurl_la_CFLAGS) $(CFLAGS) -c -o vtls/libcurl_la-axtls.lo `test -f 'vtls/axtls.c' || echo '$(srcdir)/'`vtls/axtls.c
+ 
+-vtls/libcurl_la-cyassl.lo: vtls/cyassl.c
+-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurl_la_CPPFLAGS) $(CPPFLAGS) $(libcurl_la_CFLAGS) $(CFLAGS) -MT vtls/libcurl_la-cyassl.lo -MD -MP -MF vtls/$(DEPDIR)/libcurl_la-cyassl.Tpo -c -o vtls/libcurl_la-cyassl.lo `test -f 'vtls/cyassl.c' || echo '$(srcdir)/'`vtls/cyassl.c
+-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) vtls/$(DEPDIR)/libcurl_la-cyassl.Tpo vtls/$(DEPDIR)/libcurl_la-cyassl.Plo
+-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='vtls/cyassl.c' object='vtls/libcurl_la-cyassl.lo' libtool=yes @AMDEPBACKSLASH@
++vtls/libcurl_la-wolfssl.lo: vtls/wolfssl.c
++@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurl_la_CPPFLAGS) $(CPPFLAGS) $(libcurl_la_CFLAGS) $(CFLAGS) -MT vtls/libcurl_la-wolfssl.lo -MD -MP -MF vtls/$(DEPDIR)/libcurl_la-wolfssl.Tpo -c -o vtls/libcurl_la-wolfssl.lo `test -f 'vtls/wolfssl.c' || echo '$(srcdir)/'`vtls/wolfssl.c
++@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) vtls/$(DEPDIR)/libcurl_la-wolfssl.Tpo vtls/$(DEPDIR)/libcurl_la-wolfssl.Plo
++@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='vtls/wolfssl.c' object='vtls/libcurl_la-wolfssl.lo' libtool=yes @AMDEPBACKSLASH@
+ @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurl_la_CPPFLAGS) $(CPPFLAGS) $(libcurl_la_CFLAGS) $(CFLAGS) -c -o vtls/libcurl_la-cyassl.lo `test -f 'vtls/cyassl.c' || echo '$(srcdir)/'`vtls/cyassl.c
++@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurl_la_CPPFLAGS) $(CPPFLAGS) $(libcurl_la_CFLAGS) $(CFLAGS) -c -o vtls/libcurl_la-wolfssl.lo `test -f 'vtls/wolfssl.c' || echo '$(srcdir)/'`vtls/wolfssl.c
+ 
+ vtls/libcurl_la-curl_schannel.lo: vtls/curl_schannel.c
+ @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurl_la_CPPFLAGS) $(CPPFLAGS) $(libcurl_la_CFLAGS) $(CFLAGS) -MT vtls/libcurl_la-curl_schannel.lo -MD -MP -MF vtls/$(DEPDIR)/libcurl_la-curl_schannel.Tpo -c -o vtls/libcurl_la-curl_schannel.lo `test -f 'vtls/curl_schannel.c' || echo '$(srcdir)/'`vtls/curl_schannel.c
+@@ -2700,12 +2700,12 @@
+ @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+ @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurlu_la_CPPFLAGS) $(CPPFLAGS) $(libcurlu_la_CFLAGS) $(CFLAGS) -c -o vtls/libcurlu_la-axtls.lo `test -f 'vtls/axtls.c' || echo '$(srcdir)/'`vtls/axtls.c
+ 
+-vtls/libcurlu_la-cyassl.lo: vtls/cyassl.c
+-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurlu_la_CPPFLAGS) $(CPPFLAGS) $(libcurlu_la_CFLAGS) $(CFLAGS) -MT vtls/libcurlu_la-cyassl.lo -MD -MP -MF vtls/$(DEPDIR)/libcurlu_la-cyassl.Tpo -c -o vtls/libcurlu_la-cyassl.lo `test -f 'vtls/cyassl.c' || echo '$(srcdir)/'`vtls/cyassl.c
+-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) vtls/$(DEPDIR)/libcurlu_la-cyassl.Tpo vtls/$(DEPDIR)/libcurlu_la-cyassl.Plo
+-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='vtls/cyassl.c' object='vtls/libcurlu_la-cyassl.lo' libtool=yes @AMDEPBACKSLASH@
++vtls/libcurlu_la-wolfssl.lo: vtls/wolfssl.c
++@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurlu_la_CPPFLAGS) $(CPPFLAGS) $(libcurlu_la_CFLAGS) $(CFLAGS) -MT vtls/libcurlu_la-wolfssl.lo -MD -MP -MF vtls/$(DEPDIR)/libcurlu_la-wolfssl.Tpo -c -o vtls/libcurlu_la-wolfssl.lo `test -f 'vtls/wolfssl.c' || echo '$(srcdir)/'`vtls/wolfssl.c
++@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) vtls/$(DEPDIR)/libcurlu_la-wolfssl.Tpo vtls/$(DEPDIR)/libcurlu_la-wolfssl.Plo
++@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='vtls/wolfssl.c' object='vtls/libcurlu_la-wolfssl.lo' libtool=yes @AMDEPBACKSLASH@
+ @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurlu_la_CPPFLAGS) $(CPPFLAGS) $(libcurlu_la_CFLAGS) $(CFLAGS) -c -o vtls/libcurlu_la-cyassl.lo `test -f 'vtls/cyassl.c' || echo '$(srcdir)/'`vtls/cyassl.c
++@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurlu_la_CPPFLAGS) $(CPPFLAGS) $(libcurlu_la_CFLAGS) $(CFLAGS) -c -o vtls/libcurlu_la-wolfssl.lo `test -f 'vtls/wolfssl.c' || echo '$(srcdir)/'`vtls/wolfssl.c
+ 
+ vtls/libcurlu_la-curl_schannel.lo: vtls/curl_schannel.c
+ @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurlu_la_CPPFLAGS) $(CPPFLAGS) $(libcurlu_la_CFLAGS) $(CFLAGS) -MT vtls/libcurlu_la-curl_schannel.lo -MD -MP -MF vtls/$(DEPDIR)/libcurlu_la-curl_schannel.Tpo -c -o vtls/libcurlu_la-curl_schannel.lo `test -f 'vtls/curl_schannel.c' || echo '$(srcdir)/'`vtls/curl_schannel.c
+diff -ru curl-7.40.0/lib/Makefile.inc curl_with_wolfssl/lib/Makefile.inc
+--- curl-7.40.0/lib/Makefile.inc	2015-01-07 14:53:57.000000000 -0700
++++ curl_with_wolfssl/lib/Makefile.inc	2015-01-21 10:13:58.000000000 -0700
+@@ -22,11 +22,11 @@
+ 
+ LIB_VTLS_CFILES = vtls/openssl.c vtls/gtls.c vtls/vtls.c vtls/nss.c     \
+   vtls/polarssl.c vtls/polarssl_threadlock.c vtls/axtls.c               \
+-  vtls/cyassl.c vtls/curl_schannel.c vtls/curl_darwinssl.c vtls/gskit.c
++  vtls/wolfssl.c vtls/curl_schannel.c vtls/curl_darwinssl.c vtls/gskit.c
+ 
+ LIB_VTLS_HFILES = vtls/openssl.h vtls/vtls.h vtls/gtls.h                \
+   vtls/nssg.h vtls/polarssl.h vtls/polarssl_threadlock.h vtls/axtls.h   \
+-  vtls/cyassl.h vtls/curl_schannel.h vtls/curl_darwinssl.h vtls/gskit.h
++  vtls/wolfssl.h vtls/curl_schannel.h vtls/curl_darwinssl.h vtls/gskit.h
+ 
+ LIB_CFILES = file.c timeval.c base64.c hostip.c progress.c formdata.c   \
+   cookie.c http.c sendf.c ftp.c url.c dict.c if2ip.c speedcheck.c       \
+diff -ru curl-7.40.0/lib/Makefile.vc10 curl_with_wolfssl/lib/Makefile.vc10
+--- curl-7.40.0/lib/Makefile.vc10	2015-01-08 01:18:18.000000000 -0700
++++ curl_with_wolfssl/lib/Makefile.vc10	2015-01-21 10:14:26.000000000 -0700
+@@ -552,7 +552,7 @@
+ 	$(DIROBJ)\curl_schannel.obj \
+ 	$(DIROBJ)\curl_sspi.obj \
+ 	$(DIROBJ)\curl_threads.obj \
+-	$(DIROBJ)\cyassl.obj \
++	$(DIROBJ)\wolfssl.obj \
+ 	$(DIROBJ)\dict.obj \
+ 	$(DIROBJ)\dotdot.obj \
+ 	$(DIROBJ)\easy.obj \
+diff -ru curl-7.40.0/lib/Makefile.vc6 curl_with_wolfssl/lib/Makefile.vc6
+--- curl-7.40.0/lib/Makefile.vc6	2015-01-07 14:53:57.000000000 -0700
++++ curl_with_wolfssl/lib/Makefile.vc6	2015-01-21 10:15:08.000000000 -0700
+@@ -552,7 +552,7 @@
+ 	$(DIROBJ)\curl_schannel.obj \
+ 	$(DIROBJ)\curl_sspi.obj \
+ 	$(DIROBJ)\curl_threads.obj \
+-	$(DIROBJ)\cyassl.obj \
++	$(DIROBJ)\wolfssl.obj \
+ 	$(DIROBJ)\dict.obj \
+ 	$(DIROBJ)\dotdot.obj \
+ 	$(DIROBJ)\easy.obj \
+diff -ru curl-7.40.0/lib/Makefile.vc8 curl_with_wolfssl/lib/Makefile.vc8
+--- curl-7.40.0/lib/Makefile.vc8	2015-01-08 01:18:18.000000000 -0700
++++ curl_with_wolfssl/lib/Makefile.vc8	2015-01-21 10:15:44.000000000 -0700
+@@ -552,7 +552,7 @@
+ 	$(DIROBJ)\curl_schannel.obj \
+ 	$(DIROBJ)\curl_sspi.obj \
+ 	$(DIROBJ)\curl_threads.obj \
+-	$(DIROBJ)\cyassl.obj \
++	$(DIROBJ)\wolfssl.obj \
+ 	$(DIROBJ)\dict.obj \
+ 	$(DIROBJ)\dotdot.obj \
+ 	$(DIROBJ)\easy.obj \
+diff -ru curl-7.40.0/lib/Makefile.vc9 curl_with_wolfssl/lib/Makefile.vc9
+--- curl-7.40.0/lib/Makefile.vc9	2015-01-08 01:18:18.000000000 -0700
++++ curl_with_wolfssl/lib/Makefile.vc9	2015-01-21 10:16:13.000000000 -0700
+@@ -552,7 +552,7 @@
+ 	$(DIROBJ)\curl_schannel.obj \
+ 	$(DIROBJ)\curl_sspi.obj \
+ 	$(DIROBJ)\curl_threads.obj \
+-	$(DIROBJ)\cyassl.obj \
++	$(DIROBJ)\wolfssl.obj \
+ 	$(DIROBJ)\dict.obj \
+ 	$(DIROBJ)\dotdot.obj \
+ 	$(DIROBJ)\easy.obj \
+diff -ru curl-7.40.0/lib/config-symbian.h curl_with_wolfssl/lib/config-symbian.h
+--- curl-7.40.0/lib/config-symbian.h	2014-11-04 05:51:16.000000000 -0700
++++ curl_with_wolfssl/lib/config-symbian.h	2015-01-26 08:51:03.000000000 -0700
+@@ -752,8 +752,8 @@
+ /* to enable SSPI support */
+ /* #undef USE_WINDOWS_SSPI */
+ 
+-/* Define to 1 if using yaSSL in OpenSSL compatibility mode. */
+-/* #undef USE_YASSLEMUL */
++/* Define to 1 if using wolfSSL in OpenSSL compatibility mode. */
++/* #undef USE_WOLFSSLEMUL */
+ 
+ /* Version number of package */
+ /*#define VERSION "7.18.2-CVS"*/
+diff -ru curl-7.40.0/lib/config-vxworks.h curl_with_wolfssl/lib/config-vxworks.h
+--- curl-7.40.0/lib/config-vxworks.h	2014-11-04 05:51:16.000000000 -0700
++++ curl_with_wolfssl/lib/config-vxworks.h	2015-01-26 08:51:27.000000000 -0700
+@@ -893,8 +893,8 @@
+ /* to enable SSPI support */
+ /* #undef USE_WINDOWS_SSPI */
+ 
+-/* Define to 1 if using yaSSL in OpenSSL compatibility mode. */
+-/* #undef USE_YASSLEMUL */
++/* Define to 1 if using wolfSSL in OpenSSL compatibility mode. */
++/* #undef USE_WOLFSSLEMUL */
+ 
+ /* Define to avoid automatic inclusion of winsock.h */
+ /* #undef WIN32_LEAN_AND_MEAN */
+diff -ru curl-7.40.0/lib/curl_config.h.cmake curl_with_wolfssl/lib/curl_config.h.cmake
+--- curl-7.40.0/lib/curl_config.h.cmake	2014-12-28 06:36:05.000000000 -0700
++++ curl_with_wolfssl/lib/curl_config.h.cmake	2015-01-26 08:51:54.000000000 -0700
+@@ -922,8 +922,8 @@
+ /* to enable SSPI support */
+ #cmakedefine USE_WINDOWS_SSPI 1
+ 
+-/* Define to 1 if using yaSSL in OpenSSL compatibility mode. */
+-#cmakedefine USE_YASSLEMUL 1
++/* Define to 1 if using wolfSSL in OpenSSL compatibility mode. */
++#cmakedefine USE_WOLFSSLEMUL 1
+ 
+ /* Version number of package */
+ #cmakedefine VERSION ${VERSION}
+diff -ru curl-7.40.0/lib/curl_config.h.in curl_with_wolfssl/lib/curl_config.h.in
+--- curl-7.40.0/lib/curl_config.h.in	2014-12-28 06:36:32.000000000 -0700
++++ curl_with_wolfssl/lib/curl_config.h.in	2015-01-26 08:52:24.000000000 -0700
+@@ -141,8 +141,8 @@
+ /* Define to 1 if you have the <crypto.h> header file. */
+ #undef HAVE_CRYPTO_H
+ 
+-/* Define to 1 if you have the <cyassl/error-ssl.h> header file. */
+-#undef HAVE_CYASSL_ERROR_SSL_H
++/* Define to 1 if you have the <wolfssl/error-ssl.h> header file. */
++#undef HAVE_WOLFSSL_ERROR_SSL_H
+ 
+ /* Define to 1 if you have the <dlfcn.h> header file. */
+ #undef HAVE_DLFCN_H
+@@ -903,8 +903,8 @@
+ /* if axTLS is enabled */
+ #undef USE_AXTLS
+ 
+-/* if CyaSSL is enabled */
+-#undef USE_CYASSL
++/* if wolfSSL is enabled */
++#undef USE_WOLFSSL
+ 
+ /* to enable iOS/Mac OS X native SSL/TLS support */
+ #undef USE_DARWINSSL
+@@ -971,8 +971,8 @@
+ /* to enable SSPI support */
+ #undef USE_WINDOWS_SSPI
+ 
+-/* Define to 1 if using yaSSL in OpenSSL compatibility mode. */
+-#undef USE_YASSLEMUL
++/* Define to 1 if using wolfSSL in OpenSSL compatibility mode. */
++#undef USE_WOLFSSLEMUL
+ 
+ /* Version number of package */
+ #undef VERSION
+diff -ru curl-7.40.0/lib/curl_setup.h curl_with_wolfssl/lib/curl_setup.h
+--- curl-7.40.0/lib/curl_setup.h	2014-12-08 07:45:53.000000000 -0700
++++ curl_with_wolfssl/lib/curl_setup.h	2015-01-21 10:19:13.000000000 -0700
+@@ -603,7 +603,7 @@
+ 
+ #if defined(USE_GNUTLS) || defined(USE_SSLEAY) || defined(USE_NSS) || \
+     defined(USE_POLARSSL) || defined(USE_AXTLS) || \
+-    defined(USE_CYASSL) || defined(USE_SCHANNEL) || \
++    defined(USE_WOLFSSL) || defined(USE_SCHANNEL) || \
+     defined(USE_DARWINSSL) || defined(USE_GSKIT)
+ #define USE_SSL    /* SSL support has been enabled */
+ #endif
+diff -ru curl-7.40.0/lib/urldata.h curl_with_wolfssl/lib/urldata.h
+--- curl-7.40.0/lib/urldata.h	2014-12-28 06:36:05.000000000 -0700
++++ curl_with_wolfssl/lib/urldata.h	2015-01-21 10:03:43.000000000 -0700
+@@ -130,10 +130,10 @@
+ #endif /* POLARSSL_VERSION_NUMBER<0x01010000 */
+ #endif /* USE_POLARSSL */
+ 
+-#ifdef USE_CYASSL
+-#undef OCSP_REQUEST  /* avoid cyassl/openssl/ssl.h clash with wincrypt.h */
+-#undef OCSP_RESPONSE /* avoid cyassl/openssl/ssl.h clash with wincrypt.h */
+-#include <cyassl/openssl/ssl.h>
++#ifdef USE_WOLFSSL
++#undef OCSP_REQUEST  /* avoid wolfssl/openssl/ssl.h clash with wincrypt.h */
++#undef OCSP_RESPONSE /* avoid wolfssl/openssl/ssl.h clash with wincrypt.h */
++#include <wolfssl/openssl/ssl.h>
+ #endif
+ 
+ #ifdef USE_NSS
+@@ -318,11 +318,11 @@
+   rsa_context rsa;
+   ssl_connect_state connecting_state;
+ #endif /* USE_POLARSSL */
+-#ifdef USE_CYASSL
++#ifdef USE_WOLFSSL
+   SSL_CTX* ctx;
+   SSL*     handle;
+   ssl_connect_state connecting_state;
+-#endif /* USE_CYASSL */
++#endif /* USE_WOLFSSL */
+ #ifdef USE_NSS
+   PRFileDesc *handle;
+   char *client_nickname;
+diff -ru curl-7.40.0/lib/vtls/curl_schannel.c curl_with_wolfssl/lib/vtls/curl_schannel.c
+--- curl-7.40.0/lib/vtls/curl_schannel.c	2014-12-28 06:36:05.000000000 -0700
++++ curl_with_wolfssl/lib/vtls/curl_schannel.c	2015-01-21 10:04:32.000000000 -0700
+@@ -32,7 +32,7 @@
+  * Based upon the PolarSSL implementation in polarssl.c and polarssl.h:
+  *   Copyright (C) 2010, 2011, Hoi-Ho Chan, <hoiho.chan@gmail.com>
+  *
+- * Based upon the CyaSSL implementation in cyassl.c and cyassl.h:
++ * Based upon the wolfSSL implementation in wolfssl.c and wolfssl.h:
+  *   Copyright (C) 1998 - 2012, Daniel Stenberg, <daniel@haxx.se>, et al.
+  *
+  * Thanks for code and inspiration!
+Only in curl-7.40.0/lib/vtls: cyassl.c
+Only in curl-7.40.0/lib/vtls: cyassl.h
+diff -ru curl-7.40.0/lib/vtls/openssl.c curl_with_wolfssl/lib/vtls/openssl.c
+--- curl-7.40.0/lib/vtls/openssl.c	2015-01-07 14:53:57.000000000 -0700
++++ curl_with_wolfssl/lib/vtls/openssl.c	2015-01-26 08:54:55.000000000 -0700
+@@ -2930,11 +2930,11 @@
+ 
+ size_t Curl_ossl_version(char *buffer, size_t size)
+ {
+-#ifdef YASSL_VERSION
++#ifdef WOLFSSL_VERSION
+   /* yassl provides an OpenSSL API compatibility layer so it looks identical
+      to OpenSSL in all other aspects */
+-  return snprintf(buffer, size, "yassl/%s", YASSL_VERSION);
+-#else /* YASSL_VERSION */
++  return snprintf(buffer, size, "yassl/%s", WOLFSSL_VERSION);
++#else /* WOLFSSL_VERSION */
+ 
+ #if(SSLEAY_VERSION_NUMBER >= 0x905000)
+   {
+@@ -3005,7 +3005,7 @@
+ #endif /* (SSLEAY_VERSION_NUMBER >= 0x900000) */
+ #endif /* SSLEAY_VERSION_NUMBER is less than 0.9.5 */
+ 
+-#endif /* YASSL_VERSION */
++#endif /* WOLFSSL_VERSION */
+ }
+ 
+ /* can be called with data == NULL */
+diff -ru curl-7.40.0/lib/vtls/vtls.c curl_with_wolfssl/lib/vtls/vtls.c
+--- curl-7.40.0/lib/vtls/vtls.c	2014-12-28 06:36:05.000000000 -0700
++++ curl_with_wolfssl/lib/vtls/vtls.c	2015-01-21 10:09:27.000000000 -0700
+@@ -33,7 +33,7 @@
+    Curl_nss_ - prefix for NSS ones
+    Curl_gskit_ - prefix for GSKit ones
+    Curl_polarssl_ - prefix for PolarSSL ones
+-   Curl_cyassl_ - prefix for CyaSSL ones
++   Curl_wolfssl_ - prefix for wolfSSL ones
+    Curl_schannel_ - prefix for Schannel SSPI ones
+    Curl_darwinssl_ - prefix for SecureTransport (Darwin) ones
+ 
+diff -ru curl-7.40.0/lib/vtls/vtls.h curl_with_wolfssl/lib/vtls/vtls.h
+--- curl-7.40.0/lib/vtls/vtls.h	2014-12-28 06:36:05.000000000 -0700
++++ curl_with_wolfssl/lib/vtls/vtls.h	2015-01-21 10:10:12.000000000 -0700
+@@ -29,7 +29,7 @@
+ #include "gskit.h"          /* Global Secure ToolKit versions */
+ #include "polarssl.h"       /* PolarSSL versions */
+ #include "axtls.h"          /* axTLS versions */
+-#include "cyassl.h"         /* CyaSSL versions */
++#include "wolfssl.h"         /* wolfSSL versions */
+ #include "curl_schannel.h"  /* Schannel SSPI version */
+ #include "curl_darwinssl.h" /* SecureTransport (Darwin) version */
+ 
+Only in curl_with_wolfssl/lib/vtls: wolfssl.c
+Only in curl_with_wolfssl/lib/vtls: wolfssl.h
+diff -ru curl-7.40.0/packages/AIX/Makefile.in curl_with_wolfssl/packages/AIX/Makefile.in
+--- curl-7.40.0/packages/AIX/Makefile.in	2014-12-28 06:36:14.000000000 -0700
++++ curl_with_wolfssl/packages/AIX/Makefile.in	2015-01-21 10:19:43.000000000 -0700
+@@ -301,7 +301,7 @@
+ SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
+ USE_ARES = @USE_ARES@
+ USE_AXTLS = @USE_AXTLS@
+-USE_CYASSL = @USE_CYASSL@
++USE_WOLFSSL = @USE_WOLFSSL@
+ USE_DARWINSSL = @USE_DARWINSSL@
+ USE_GNUTLS = @USE_GNUTLS@
+ USE_GNUTLS_NETTLE = @USE_GNUTLS_NETTLE@
+diff -ru curl-7.40.0/packages/AIX/RPM/Makefile.in curl_with_wolfssl/packages/AIX/RPM/Makefile.in
+--- curl-7.40.0/packages/AIX/RPM/Makefile.in	2014-12-28 06:36:14.000000000 -0700
++++ curl_with_wolfssl/packages/AIX/RPM/Makefile.in	2015-01-21 10:20:01.000000000 -0700
+@@ -241,7 +241,7 @@
+ SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
+ USE_ARES = @USE_ARES@
+ USE_AXTLS = @USE_AXTLS@
+-USE_CYASSL = @USE_CYASSL@
++USE_WOLFSSL = @USE_WOLFSSL@
+ USE_DARWINSSL = @USE_DARWINSSL@
+ USE_GNUTLS = @USE_GNUTLS@
+ USE_GNUTLS_NETTLE = @USE_GNUTLS_NETTLE@
+diff -ru curl-7.40.0/packages/EPM/Makefile.in curl_with_wolfssl/packages/EPM/Makefile.in
+--- curl-7.40.0/packages/EPM/Makefile.in	2014-12-28 06:36:14.000000000 -0700
++++ curl_with_wolfssl/packages/EPM/Makefile.in	2015-01-21 10:20:18.000000000 -0700
+@@ -241,7 +241,7 @@
+ SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
+ USE_ARES = @USE_ARES@
+ USE_AXTLS = @USE_AXTLS@
+-USE_CYASSL = @USE_CYASSL@
++USE_WOLFSSL = @USE_WOLFSSL@
+ USE_DARWINSSL = @USE_DARWINSSL@
+ USE_GNUTLS = @USE_GNUTLS@
+ USE_GNUTLS_NETTLE = @USE_GNUTLS_NETTLE@
+diff -ru curl-7.40.0/packages/Linux/Makefile.in curl_with_wolfssl/packages/Linux/Makefile.in
+--- curl-7.40.0/packages/Linux/Makefile.in	2014-12-28 06:36:14.000000000 -0700
++++ curl_with_wolfssl/packages/Linux/Makefile.in	2015-01-21 10:20:35.000000000 -0700
+@@ -301,7 +301,7 @@
+ SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
+ USE_ARES = @USE_ARES@
+ USE_AXTLS = @USE_AXTLS@
+-USE_CYASSL = @USE_CYASSL@
++USE_WOLFSSL = @USE_WOLFSSL@
+ USE_DARWINSSL = @USE_DARWINSSL@
+ USE_GNUTLS = @USE_GNUTLS@
+ USE_GNUTLS_NETTLE = @USE_GNUTLS_NETTLE@
+diff -ru curl-7.40.0/packages/Linux/RPM/Makefile.in curl_with_wolfssl/packages/Linux/RPM/Makefile.in
+--- curl-7.40.0/packages/Linux/RPM/Makefile.in	2014-12-28 06:36:14.000000000 -0700
++++ curl_with_wolfssl/packages/Linux/RPM/Makefile.in	2015-01-21 10:20:50.000000000 -0700
+@@ -242,7 +242,7 @@
+ SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
+ USE_ARES = @USE_ARES@
+ USE_AXTLS = @USE_AXTLS@
+-USE_CYASSL = @USE_CYASSL@
++USE_WOLFSSL = @USE_WOLFSSL@
+ USE_DARWINSSL = @USE_DARWINSSL@
+ USE_GNUTLS = @USE_GNUTLS@
+ USE_GNUTLS_NETTLE = @USE_GNUTLS_NETTLE@
+diff -ru curl-7.40.0/packages/Makefile.in curl_with_wolfssl/packages/Makefile.in
+--- curl-7.40.0/packages/Makefile.in	2014-12-28 06:36:14.000000000 -0700
++++ curl_with_wolfssl/packages/Makefile.in	2015-01-21 10:21:02.000000000 -0700
+@@ -301,7 +301,7 @@
+ SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
+ USE_ARES = @USE_ARES@
+ USE_AXTLS = @USE_AXTLS@
+-USE_CYASSL = @USE_CYASSL@
++USE_WOLFSSL = @USE_WOLFSSL@
+ USE_DARWINSSL = @USE_DARWINSSL@
+ USE_GNUTLS = @USE_GNUTLS@
+ USE_GNUTLS_NETTLE = @USE_GNUTLS_NETTLE@
+diff -ru curl-7.40.0/packages/OS400/curl.inc.in curl_with_wolfssl/packages/OS400/curl.inc.in
+--- curl-7.40.0/packages/OS400/curl.inc.in	2014-12-03 18:52:19.000000000 -0700
++++ curl_with_wolfssl/packages/OS400/curl.inc.in	2015-01-21 10:21:20.000000000 -0700
+@@ -1401,7 +1401,7 @@
+      d                 c                   5
+      d  CURLSSLBACKEND_POLARSSL...
+      d                 c                   6
+-     d  CURLSSLBACKEND_CYASSL...
++     d  CURLSSLBACKEND_WOLFSSL...
+      d                 c                   7
+      d  CURLSSLBACKEND_SCHANNEL...
+      d                 c                   8
+diff -ru curl-7.40.0/packages/Solaris/Makefile.in curl_with_wolfssl/packages/Solaris/Makefile.in
+--- curl-7.40.0/packages/Solaris/Makefile.in	2014-12-28 06:36:14.000000000 -0700
++++ curl_with_wolfssl/packages/Solaris/Makefile.in	2015-01-21 10:21:33.000000000 -0700
+@@ -244,7 +244,7 @@
+ SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
+ USE_ARES = @USE_ARES@
+ USE_AXTLS = @USE_AXTLS@
+-USE_CYASSL = @USE_CYASSL@
++USE_WOLFSSL = @USE_WOLFSSL@
+ USE_DARWINSSL = @USE_DARWINSSL@
+ USE_GNUTLS = @USE_GNUTLS@
+ USE_GNUTLS_NETTLE = @USE_GNUTLS_NETTLE@
+diff -ru curl-7.40.0/packages/Symbian/group/libcurl.mmp curl_with_wolfssl/packages/Symbian/group/libcurl.mmp
+--- curl-7.40.0/packages/Symbian/group/libcurl.mmp	2015-01-07 14:53:57.000000000 -0700
++++ curl_with_wolfssl/packages/Symbian/group/libcurl.mmp	2015-01-21 10:11:43.000000000 -0700
+@@ -35,7 +35,7 @@
+   socks_sspi.c curl_sspi.c slist.c nonblock.c curl_memrchr.c imap.c    \
+   pop3.c smtp.c pingpong.c rtsp.c curl_threads.c warnless.c hmac.c     \
+   vtls/polarssl.c curl_rtmp.c openldap.c curl_gethostname.c gopher.c   \
+-  vtls/axtls.c idn_win32.c http_negotiate_sspi.c vtls/cyassl.c         \
++  vtls/axtls.c idn_win32.c http_negotiate_sspi.c vtls/wolfssl.c         \
+   http_proxy.c non-ascii.c asyn-ares.c asyn-thread.c curl_gssapi.c     \
+   curl_ntlm.c curl_ntlm_wb.c curl_ntlm_core.c curl_ntlm_msgs.c         \
+   curl_sasl.c vtls/curl_schannel.c curl_multibyte.c                    \
+diff -ru curl-7.40.0/packages/Win32/Makefile.in curl_with_wolfssl/packages/Win32/Makefile.in
+--- curl-7.40.0/packages/Win32/Makefile.in	2014-12-28 06:36:14.000000000 -0700
++++ curl_with_wolfssl/packages/Win32/Makefile.in	2015-01-21 10:22:44.000000000 -0700
+@@ -301,7 +301,7 @@
+ SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
+ USE_ARES = @USE_ARES@
+ USE_AXTLS = @USE_AXTLS@
+-USE_CYASSL = @USE_CYASSL@
++USE_WOLFSSL = @USE_WOLFSSL@
+ USE_DARWINSSL = @USE_DARWINSSL@
+ USE_GNUTLS = @USE_GNUTLS@
+ USE_GNUTLS_NETTLE = @USE_GNUTLS_NETTLE@
+diff -ru curl-7.40.0/packages/Win32/cygwin/Makefile.in curl_with_wolfssl/packages/Win32/cygwin/Makefile.in
+--- curl-7.40.0/packages/Win32/cygwin/Makefile.in	2014-12-28 06:36:14.000000000 -0700
++++ curl_with_wolfssl/packages/Win32/cygwin/Makefile.in	2015-01-21 10:22:31.000000000 -0700
+@@ -241,7 +241,7 @@
+ SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
+ USE_ARES = @USE_ARES@
+ USE_AXTLS = @USE_AXTLS@
+-USE_CYASSL = @USE_CYASSL@
++USE_WOLFSSL = @USE_WOLFSSL@
+ USE_DARWINSSL = @USE_DARWINSSL@
+ USE_GNUTLS = @USE_GNUTLS@
+ USE_GNUTLS_NETTLE = @USE_GNUTLS_NETTLE@
+diff -ru curl-7.40.0/packages/vms/Makefile.in curl_with_wolfssl/packages/vms/Makefile.in
+--- curl-7.40.0/packages/vms/Makefile.in	2014-12-28 06:36:14.000000000 -0700
++++ curl_with_wolfssl/packages/vms/Makefile.in	2015-01-21 10:22:17.000000000 -0700
+@@ -241,7 +241,7 @@
+ SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
+ USE_ARES = @USE_ARES@
+ USE_AXTLS = @USE_AXTLS@
+-USE_CYASSL = @USE_CYASSL@
++USE_WOLFSSL = @USE_WOLFSSL@
+ USE_DARWINSSL = @USE_DARWINSSL@
+ USE_GNUTLS = @USE_GNUTLS@
+ USE_GNUTLS_NETTLE = @USE_GNUTLS_NETTLE@
+diff -ru curl-7.40.0/packages/vms/generate_config_vms_h_curl.com curl_with_wolfssl/packages/vms/generate_config_vms_h_curl.com
+--- curl-7.40.0/packages/vms/generate_config_vms_h_curl.com	2014-12-28 06:36:05.000000000 -0700
++++ curl_with_wolfssl/packages/vms/generate_config_vms_h_curl.com	2015-01-21 10:22:03.000000000 -0700
+@@ -328,8 +328,8 @@
+ $write cvh "#ifdef USE_AXTLS"
+ $write cvh "#undef USE_AXTLS"
+ $write cvh "#endif"
+-$write cvh "#ifdef USE_CYASSL"
+-$write cvh "#undef USE_CYASSL"
++$write cvh "#ifdef USE_WOLFSSL"
++$write cvh "#undef USE_WOLFSSL"
+ $write cvh "#endif"
+ $write cvh "#ifdef USE_DARWINSSL"
+ $write cvh "#undef USE_DARWINSSL"
+diff -ru curl-7.40.0/src/Makefile.in curl_with_wolfssl/src/Makefile.in
+--- curl-7.40.0/src/Makefile.in	2014-12-28 06:36:14.000000000 -0700
++++ curl_with_wolfssl/src/Makefile.in	2015-01-21 10:22:55.000000000 -0700
+@@ -395,7 +395,7 @@
+ SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
+ USE_ARES = @USE_ARES@
+ USE_AXTLS = @USE_AXTLS@
+-USE_CYASSL = @USE_CYASSL@
++USE_WOLFSSL = @USE_WOLFSSL@
+ USE_DARWINSSL = @USE_DARWINSSL@
+ USE_GNUTLS = @USE_GNUTLS@
+ USE_GNUTLS_NETTLE = @USE_GNUTLS_NETTLE@
+diff -ru curl-7.40.0/tests/Makefile.in curl_with_wolfssl/tests/Makefile.in
+--- curl-7.40.0/tests/Makefile.in	2014-12-28 06:36:14.000000000 -0700
++++ curl_with_wolfssl/tests/Makefile.in	2015-01-21 10:24:45.000000000 -0700
+@@ -322,7 +322,7 @@
+ SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
+ USE_ARES = @USE_ARES@
+ USE_AXTLS = @USE_AXTLS@
+-USE_CYASSL = @USE_CYASSL@
++USE_WOLFSSL = @USE_WOLFSSL@
+ USE_DARWINSSL = @USE_DARWINSSL@
+ USE_GNUTLS = @USE_GNUTLS@
+ USE_GNUTLS_NETTLE = @USE_GNUTLS_NETTLE@
+Only in curl_with_wolfssl/tests: build-3310
+diff -ru curl-7.40.0/tests/certs/Makefile.in curl_with_wolfssl/tests/certs/Makefile.in
+--- curl-7.40.0/tests/certs/Makefile.in	2014-12-28 06:36:14.000000000 -0700
++++ curl_with_wolfssl/tests/certs/Makefile.in	2015-01-21 10:23:07.000000000 -0700
+@@ -301,7 +301,7 @@
+ SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
+ USE_ARES = @USE_ARES@
+ USE_AXTLS = @USE_AXTLS@
+-USE_CYASSL = @USE_CYASSL@
++USE_WOLFSSL = @USE_WOLFSSL@
+ USE_DARWINSSL = @USE_DARWINSSL@
+ USE_GNUTLS = @USE_GNUTLS@
+ USE_GNUTLS_NETTLE = @USE_GNUTLS_NETTLE@
+diff -ru curl-7.40.0/tests/certs/scripts/Makefile.in curl_with_wolfssl/tests/certs/scripts/Makefile.in
+--- curl-7.40.0/tests/certs/scripts/Makefile.in	2014-12-28 06:36:14.000000000 -0700
++++ curl_with_wolfssl/tests/certs/scripts/Makefile.in	2015-01-21 10:23:24.000000000 -0700
+@@ -241,7 +241,7 @@
+ SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
+ USE_ARES = @USE_ARES@
+ USE_AXTLS = @USE_AXTLS@
+-USE_CYASSL = @USE_CYASSL@
++USE_WOLFSSL = @USE_WOLFSSL@
+ USE_DARWINSSL = @USE_DARWINSSL@
+ USE_GNUTLS = @USE_GNUTLS@
+ USE_GNUTLS_NETTLE = @USE_GNUTLS_NETTLE@
+diff -ru curl-7.40.0/tests/curl_client_key curl_with_wolfssl/tests/curl_client_key
+--- curl-7.40.0/tests/curl_client_key	2015-01-21 09:57:07.000000000 -0700
++++ curl_with_wolfssl/tests/curl_client_key	2015-01-21 11:02:04.000000000 -0700
+@@ -1,12 +1,12 @@
+ -----BEGIN DSA PRIVATE KEY-----
+-MIIBuwIBAAKBgQCbpOhqNoM/FrfMb+D5xFy0VwCMLEHbxLMjhkQbKGuMAkBczfrU
+-U43LyjDqciiKbh66o0u6ggm5b4luQ1URBNGVKv2l/PMSHY7UxO6obqemFkKZreBe
+-+UaEltP5+1nlVdO4IPrO4pvwEsZ0SYoggxnwikxnQsMmYGtime5NkyjqnwIVAJgJ
+-4wxNsXeRfy8QDH4XNaxUO5MFAoGAXGjKcESJs/Ec1ilWCuN+XOWmbdPVBlnXxeNr
+-lIeCbw3JS+mBVQOJBvttbhiXmEvsN+jcD2JrZmXeimMY4wLMyr3gyrSkBwxHCgzV
+-W5Tpfk9Vyrhj1HAVsw+sIYoWZ6eSbcR+2KEZUJK/SxBkUmtHUhYos6J9fNr1qbKE
+-W/drUrUCgYBi5K4Wp+oE7HArg8uAjqGAgazqwkFlvoQyiwr2VubrXATl0VF6UInZ
+-zklLQeqg+0EIOBDzZpUxeZ8wKkeMsWpmjhrnaytzbbirER0JZq4tRtdcmRLz9VJx
+-4vIUa6bDQ8xuw7WEAp3YAWrsrR7WHenBX8d7pUFz3dj/c5SUkNrbMgIVAJOJLvzF
+-VBYSMihlrl1TVyBD+oct
++MIIBugIBAAKBgQCRb/0lfyrwmSSn4x5LQfQXIJ2PsdwxzbTWPCUmXUBj/KIHEm8E
++4ieBqGKxMDYartXdsiPNLytHoshOKcujCuuqoEucGpTLaYf+M5098pk333JXugjT
++4rdK/LhLIhCCwcjyvN/Jbrm5i1vUMREQf/nWcNXHCKDwpp7UsfrjN0TSuQIVAOmO
++mW89dqs0/Ef/1wxqdGlHVmiHAoGAUwPafx9SNXtQG60UDpl5d94jCpyOK5kAg7CW
++vj29jeGJ589pM/X4+u4ihX2NxgROs1rigzkuaT+C2BGAfgS84Wrwayj//rKePxmv
++2LN/40PNB1XNTBVGQwlrb4o5+S4xBRlzpL0qhe68uh+9f2MvyvNwTVhzQpYJuIhv
++MhUIelYCgYBlTS50Zu7I4jBgbBRxxX6f6TQgPPoszWGjJI7jXpHqwUxyEEGktvGm
++CvD5TtX+unVU5pREm2IatQDOG6uDks4vaS9/LFZXnT0PispLOVHbzWY2kaePP0ei
++h08KTroDZoqkqEMgJmIOsz7U4csdPDvsKeBM/gfZKKNexg5lwqSGygIUX3oMZ0Q8
++tr8UEvXSrrRYJFBI7Uo=
+ -----END DSA PRIVATE KEY-----
+diff -ru curl-7.40.0/tests/curl_client_key.pub curl_with_wolfssl/tests/curl_client_key.pub
+--- curl-7.40.0/tests/curl_client_key.pub	2015-01-21 09:57:07.000000000 -0700
++++ curl_with_wolfssl/tests/curl_client_key.pub	2015-01-21 11:02:04.000000000 -0700
+@@ -1 +1 @@
+-ssh-dss AAAAB3NzaC1kc3MAAACBAJuk6Go2gz8Wt8xv4PnEXLRXAIwsQdvEsyOGRBsoa4wCQFzN+tRTjcvKMOpyKIpuHrqjS7qCCblviW5DVREE0ZUq/aX88xIdjtTE7qhup6YWQpmt4F75RoSW0/n7WeVV07gg+s7im/ASxnRJiiCDGfCKTGdCwyZga2KZ7k2TKOqfAAAAFQCYCeMMTbF3kX8vEAx+FzWsVDuTBQAAAIBcaMpwRImz8RzWKVYK435c5aZt09UGWdfF42uUh4JvDclL6YFVA4kG+21uGJeYS+w36NwPYmtmZd6KYxjjAszKveDKtKQHDEcKDNVblOl+T1XKuGPUcBWzD6whihZnp5JtxH7YoRlQkr9LEGRSa0dSFiizon182vWpsoRb92tStQAAAIBi5K4Wp+oE7HArg8uAjqGAgazqwkFlvoQyiwr2VubrXATl0VF6UInZzklLQeqg+0EIOBDzZpUxeZ8wKkeMsWpmjhrnaytzbbirER0JZq4tRtdcmRLz9VJx4vIUa6bDQ8xuw7WEAp3YAWrsrR7WHenBX8d7pUFz3dj/c5SUkNrbMg== curl test client
++ssh-dss AAAAB3NzaC1kc3MAAACBAJFv/SV/KvCZJKfjHktB9BcgnY+x3DHNtNY8JSZdQGP8ogcSbwTiJ4GoYrEwNhqu1d2yI80vK0eiyE4py6MK66qgS5walMtph/4znT3ymTffcle6CNPit0r8uEsiEILByPK838luubmLW9QxERB/+dZw1ccIoPCmntSx+uM3RNK5AAAAFQDpjplvPXarNPxH/9cManRpR1ZohwAAAIBTA9p/H1I1e1AbrRQOmXl33iMKnI4rmQCDsJa+Pb2N4Ynnz2kz9fj67iKFfY3GBE6zWuKDOS5pP4LYEYB+BLzhavBrKP/+sp4/Ga/Ys3/jQ80HVc1MFUZDCWtvijn5LjEFGXOkvSqF7ry6H71/Yy/K83BNWHNClgm4iG8yFQh6VgAAAIBlTS50Zu7I4jBgbBRxxX6f6TQgPPoszWGjJI7jXpHqwUxyEEGktvGmCvD5TtX+unVU5pREm2IatQDOG6uDks4vaS9/LFZXnT0PispLOVHbzWY2kaePP0eih08KTroDZoqkqEMgJmIOsz7U4csdPDvsKeBM/gfZKKNexg5lwqSGyg== curl test client
+diff -ru curl-7.40.0/tests/curl_client_knownhosts curl_with_wolfssl/tests/curl_client_knownhosts
+--- curl-7.40.0/tests/curl_client_knownhosts	2015-01-21 09:57:07.000000000 -0700
++++ curl_with_wolfssl/tests/curl_client_knownhosts	2015-01-21 11:02:04.000000000 -0700
+@@ -1 +1 @@
+-127.0.0.1 ssh-dss AAAAB3NzaC1kc3MAAACBAN9I90jF4gz3IVF6OgFEkbSTbytPWXgxwnAJZUAkvglUALw3KAKYvxeGJ0ejUvI4ZLaRUN3s1IpwL46QI2CoHWjgmiy0RygFtT4tO1FY1tCwmSulYQgQKzdQDtG9RBvif2dm5QP2Uk4EY4vvWC1WX57mPvhZ2gfAXVJL2X1bSG35AAAAFQDyO6BwKTo9ZijRNBp4njdH8jpTmwAAAIA6I02BNjq7nO3BvgaXhIgxGQzti8IeBTm3sWiUJLQaaJqHiYaqTO4YA63hqXYC4DmTlQljEeHhwliZAA2wSmgY5VtJj+g+knMyLDf/QtXTJj9NyzY+1JpNS6WZh/roYimny2+FEFs5nmEcWfxGbUQ+NEsCSbzCo+rioN5IeIenCQAAAIAf2eyvQ9D8JHH/pG2XVUybe8MpPOerQ/XDhaScJVptlR8zvxyY/rEBwQvc3xZweTBR6r0Qaw3mlNxweUySE0PK0FVHZ42MvlIISI61sksDIdeNf17rpohJrzhaVPDKuaD85qamtTLhAucQZsidQBgnzyHPXEuLUobwaxiGqTJbOg== 
++127.0.0.1 ssh-dss AAAAB3NzaC1kc3MAAACBAJbTqF9T6XczEJP9LUBxLknmvvbHEnwrVdWgsz4zOA02nbWtc3SgAP0iSfBxJlmcxjGWqsf97jNrhBEcDai1clJiuja7DgQY/IRZYsNteEC3WodIoymHzixzYhpk53Z8yQOjzAOh90RYScgQ1ZEgWDqThMAkhjeEKaKBFHSurkMxAAAAFQCmPMG+uHe23OSNXedNCVEJhTV7LQAAAIEAgn2gNxL6W/CaRJoQ4/7BHKC5Y0J6mmRmiQ3jlL0gbUTMfUwmhTV8Ukzrf2lpdGMf7bufDM7vLrfjtJsU5O6GYv8V/cnPo7QLovX+p4ockeRUUw0q96STL5tSsc4K/Rxsb7wmjiMORkcQhLpcWpG9kLiGzvLuxe1tGwd0fZQ/ShoAAACAcSQ5zgwvDktKuNj6rSMuIfp6bXqMSNkqvCHXanNP5pTPyZ4TnMW43ciR0acIpBw9ft/6gD95Ro/ran8iXCbp1sh+zafjilAhnWcqjSMgCs3XIoCIq51oTP1SiLuIxrn9RtWvxjWYHfJMGACogpNPrJPxd+cIZ/rUcuRoFi1tD9M= 
+diff -ru curl-7.40.0/tests/curl_host_dsa_key curl_with_wolfssl/tests/curl_host_dsa_key
+--- curl-7.40.0/tests/curl_host_dsa_key	2015-01-21 09:57:06.000000000 -0700
++++ curl_with_wolfssl/tests/curl_host_dsa_key	2015-01-21 11:02:03.000000000 -0700
+@@ -1,12 +1,12 @@
+ -----BEGIN DSA PRIVATE KEY-----
+-MIIBugIBAAKBgQDfSPdIxeIM9yFRejoBRJG0k28rT1l4McJwCWVAJL4JVAC8NygC
+-mL8XhidHo1LyOGS2kVDd7NSKcC+OkCNgqB1o4JostEcoBbU+LTtRWNbQsJkrpWEI
+-ECs3UA7RvUQb4n9nZuUD9lJOBGOL71gtVl+e5j74WdoHwF1SS9l9W0ht+QIVAPI7
+-oHApOj1mKNE0GnieN0fyOlObAoGAOiNNgTY6u5ztwb4Gl4SIMRkM7YvCHgU5t7Fo
+-lCS0Gmiah4mGqkzuGAOt4al2AuA5k5UJYxHh4cJYmQANsEpoGOVbSY/oPpJzMiw3
+-/0LV0yY/Tcs2PtSaTUulmYf66GIpp8tvhRBbOZ5hHFn8Rm1EPjRLAkm8wqPq4qDe
+-SHiHpwkCgYAf2eyvQ9D8JHH/pG2XVUybe8MpPOerQ/XDhaScJVptlR8zvxyY/rEB
+-wQvc3xZweTBR6r0Qaw3mlNxweUySE0PK0FVHZ42MvlIISI61sksDIdeNf17rpohJ
+-rzhaVPDKuaD85qamtTLhAucQZsidQBgnzyHPXEuLUobwaxiGqTJbOgIUFDvtHGef
+-PJc/3lxxYqFh87IPbLY=
++MIIBvAIBAAKBgQCW06hfU+l3MxCT/S1AcS5J5r72xxJ8K1XVoLM+MzgNNp21rXN0
++oAD9IknwcSZZnMYxlqrH/e4za4QRHA2otXJSYro2uw4EGPyEWWLDbXhAt1qHSKMp
++h84sc2IaZOd2fMkDo8wDofdEWEnIENWRIFg6k4TAJIY3hCmigRR0rq5DMQIVAKY8
++wb64d7bc5I1d500JUQmFNXstAoGBAIJ9oDcS+lvwmkSaEOP+wRyguWNCeppkZokN
++45S9IG1EzH1MJoU1fFJM639paXRjH+27nwzO7y6347SbFOTuhmL/Ff3Jz6O0C6L1
++/qeKHJHkVFMNKvekky+bUrHOCv0cbG+8Jo4jDkZHEIS6XFqRvZC4hs7y7sXtbRsH
++dH2UP0oaAoGAcSQ5zgwvDktKuNj6rSMuIfp6bXqMSNkqvCHXanNP5pTPyZ4TnMW4
++3ciR0acIpBw9ft/6gD95Ro/ran8iXCbp1sh+zafjilAhnWcqjSMgCs3XIoCIq51o
++TP1SiLuIxrn9RtWvxjWYHfJMGACogpNPrJPxd+cIZ/rUcuRoFi1tD9MCFQCDDZfs
++8r3HWZOoWHln9VTMnxQnvQ==
+ -----END DSA PRIVATE KEY-----
+diff -ru curl-7.40.0/tests/curl_host_dsa_key.pub curl_with_wolfssl/tests/curl_host_dsa_key.pub
+--- curl-7.40.0/tests/curl_host_dsa_key.pub	2015-01-21 09:57:06.000000000 -0700
++++ curl_with_wolfssl/tests/curl_host_dsa_key.pub	2015-01-21 11:02:03.000000000 -0700
+@@ -1 +1 @@
+-ssh-dss AAAAB3NzaC1kc3MAAACBAN9I90jF4gz3IVF6OgFEkbSTbytPWXgxwnAJZUAkvglUALw3KAKYvxeGJ0ejUvI4ZLaRUN3s1IpwL46QI2CoHWjgmiy0RygFtT4tO1FY1tCwmSulYQgQKzdQDtG9RBvif2dm5QP2Uk4EY4vvWC1WX57mPvhZ2gfAXVJL2X1bSG35AAAAFQDyO6BwKTo9ZijRNBp4njdH8jpTmwAAAIA6I02BNjq7nO3BvgaXhIgxGQzti8IeBTm3sWiUJLQaaJqHiYaqTO4YA63hqXYC4DmTlQljEeHhwliZAA2wSmgY5VtJj+g+knMyLDf/QtXTJj9NyzY+1JpNS6WZh/roYimny2+FEFs5nmEcWfxGbUQ+NEsCSbzCo+rioN5IeIenCQAAAIAf2eyvQ9D8JHH/pG2XVUybe8MpPOerQ/XDhaScJVptlR8zvxyY/rEBwQvc3xZweTBR6r0Qaw3mlNxweUySE0PK0FVHZ42MvlIISI61sksDIdeNf17rpohJrzhaVPDKuaD85qamtTLhAucQZsidQBgnzyHPXEuLUobwaxiGqTJbOg== curl test server
++ssh-dss AAAAB3NzaC1kc3MAAACBAJbTqF9T6XczEJP9LUBxLknmvvbHEnwrVdWgsz4zOA02nbWtc3SgAP0iSfBxJlmcxjGWqsf97jNrhBEcDai1clJiuja7DgQY/IRZYsNteEC3WodIoymHzixzYhpk53Z8yQOjzAOh90RYScgQ1ZEgWDqThMAkhjeEKaKBFHSurkMxAAAAFQCmPMG+uHe23OSNXedNCVEJhTV7LQAAAIEAgn2gNxL6W/CaRJoQ4/7BHKC5Y0J6mmRmiQ3jlL0gbUTMfUwmhTV8Ukzrf2lpdGMf7bufDM7vLrfjtJsU5O6GYv8V/cnPo7QLovX+p4ockeRUUw0q96STL5tSsc4K/Rxsb7wmjiMORkcQhLpcWpG9kLiGzvLuxe1tGwd0fZQ/ShoAAACAcSQ5zgwvDktKuNj6rSMuIfp6bXqMSNkqvCHXanNP5pTPyZ4TnMW43ciR0acIpBw9ft/6gD95Ro/ran8iXCbp1sh+zafjilAhnWcqjSMgCs3XIoCIq51oTP1SiLuIxrn9RtWvxjWYHfJMGACogpNPrJPxd+cIZ/rUcuRoFi1tD9M= curl test server
+diff -ru curl-7.40.0/tests/curl_sftp_config curl_with_wolfssl/tests/curl_sftp_config
+--- curl-7.40.0/tests/curl_sftp_config	2015-01-21 09:57:07.000000000 -0700
++++ curl_with_wolfssl/tests/curl_sftp_config	2015-01-26 09:11:36.000000000 -0700
+@@ -10,8 +10,8 @@
+ #
+ BindAddress 127.0.0.1
+ #
+-IdentityFile /Users/khimes/work/curl-7.40.0/tests/curl_client_key
+-UserKnownHostsFile /Users/khimes/work/curl-7.40.0/tests/curl_client_knownhosts
++IdentityFile /Users/khimes/work/curl_with_wolfssl/tests/curl_client_key
++UserKnownHostsFile /Users/khimes/work/curl_with_wolfssl/tests/curl_client_knownhosts
+ #
+ BatchMode yes
+ ChallengeResponseAuthentication no
+diff -ru curl-7.40.0/tests/curl_ssh_config curl_with_wolfssl/tests/curl_ssh_config
+--- curl-7.40.0/tests/curl_ssh_config	2015-01-21 09:57:07.000000000 -0700
++++ curl_with_wolfssl/tests/curl_ssh_config	2015-01-26 09:11:36.000000000 -0700
+@@ -11,8 +11,8 @@
+ BindAddress 127.0.0.1
+ DynamicForward 9000
+ #
+-IdentityFile /Users/khimes/work/curl-7.40.0/tests/curl_client_key
+-UserKnownHostsFile /Users/khimes/work/curl-7.40.0/tests/curl_client_knownhosts
++IdentityFile /Users/khimes/work/curl_with_wolfssl/tests/curl_client_key
++UserKnownHostsFile /Users/khimes/work/curl_with_wolfssl/tests/curl_client_knownhosts
+ #
+ BatchMode yes
+ ChallengeResponseAuthentication no
+diff -ru curl-7.40.0/tests/curl_sshd_config curl_with_wolfssl/tests/curl_sshd_config
+--- curl-7.40.0/tests/curl_sshd_config	2015-01-21 09:57:07.000000000 -0700
++++ curl_with_wolfssl/tests/curl_sshd_config	2015-01-26 09:11:36.000000000 -0700
+@@ -6,10 +6,10 @@
+ DenyGroups
+ AllowGroups
+ #
+-AuthorizedKeysFile /Users/khimes/work/curl-7.40.0/tests/curl_client_key.pub
+-AuthorizedKeysFile2 /Users/khimes/work/curl-7.40.0/tests/curl_client_key.pub
+-HostKey /Users/khimes/work/curl-7.40.0/tests/curl_host_dsa_key
+-PidFile /Users/khimes/work/curl-7.40.0/tests/.ssh_server.pid
++AuthorizedKeysFile /Users/khimes/work/curl_with_wolfssl/tests/curl_client_key.pub
++AuthorizedKeysFile2 /Users/khimes/work/curl_with_wolfssl/tests/curl_client_key.pub
++HostKey /Users/khimes/work/curl_with_wolfssl/tests/curl_host_dsa_key
++PidFile /Users/khimes/work/curl_with_wolfssl/tests/.ssh_server.pid
+ #
+ Port 8999
+ AddressFamily any
+diff -ru curl-7.40.0/tests/data/Makefile.in curl_with_wolfssl/tests/data/Makefile.in
+--- curl-7.40.0/tests/data/Makefile.in	2015-01-08 01:05:26.000000000 -0700
++++ curl_with_wolfssl/tests/data/Makefile.in	2015-01-21 10:23:39.000000000 -0700
+@@ -263,7 +263,7 @@
+ SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
+ USE_ARES = @USE_ARES@
+ USE_AXTLS = @USE_AXTLS@
+-USE_CYASSL = @USE_CYASSL@
++USE_WOLFSSL = @USE_WOLFSSL@
+ USE_DARWINSSL = @USE_DARWINSSL@
+ USE_GNUTLS = @USE_GNUTLS@
+ USE_GNUTLS_NETTLE = @USE_GNUTLS_NETTLE@
+diff -ru curl-7.40.0/tests/libtest/Makefile.in curl_with_wolfssl/tests/libtest/Makefile.in
+--- curl-7.40.0/tests/libtest/Makefile.in	2015-01-08 01:05:28.000000000 -0700
++++ curl_with_wolfssl/tests/libtest/Makefile.in	2015-01-21 10:23:50.000000000 -0700
+@@ -1037,7 +1037,7 @@
+ SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
+ USE_ARES = @USE_ARES@
+ USE_AXTLS = @USE_AXTLS@
+-USE_CYASSL = @USE_CYASSL@
++USE_WOLFSSL = @USE_WOLFSSL@
+ USE_DARWINSSL = @USE_DARWINSSL@
+ USE_GNUTLS = @USE_GNUTLS@
+ USE_GNUTLS_NETTLE = @USE_GNUTLS_NETTLE@
+diff -ru curl-7.40.0/tests/log/ftp_ipv6_server.log curl_with_wolfssl/tests/log/ftp_ipv6_server.log
+--- curl-7.40.0/tests/log/ftp_ipv6_server.log	2015-01-21 10:10:48.000000000 -0700
++++ curl_with_wolfssl/tests/log/ftp_ipv6_server.log	2015-01-26 09:25:15.000000000 -0700
+@@ -1,3 +1,3 @@
+-10:10:48.511632 Failed to read input
+-10:10:48.511779 Error: FTP-IPv6 server, read zero
+-10:10:48.511877 Exited from sysread_or_die() at ./ftpserver.pl line 3000. FTP-IPv6 server, read zero
++09:25:15.629321 Failed to read input
++09:25:15.629452 Error: FTP-IPv6 server, read zero
++09:25:15.629537 Exited from sysread_or_die() at ./ftpserver.pl line 3000. FTP-IPv6 server, read zero
+diff -ru curl-7.40.0/tests/log/ftp_server.log curl_with_wolfssl/tests/log/ftp_server.log
+--- curl-7.40.0/tests/log/ftp_server.log	2015-01-21 10:10:48.000000000 -0700
++++ curl_with_wolfssl/tests/log/ftp_server.log	2015-01-26 09:25:15.000000000 -0700
+@@ -1,3 +1,3 @@
+-10:10:48.511475 Failed to read input
+-10:10:48.511684 Error: FTP server, read zero
+-10:10:48.511785 Exited from sysread_or_die() at ./ftpserver.pl line 3000. FTP server, read zero
++09:25:15.629219 Failed to read input
++09:25:15.629393 Error: FTP server, read zero
++09:25:15.629542 Exited from sysread_or_die() at ./ftpserver.pl line 3000. FTP server, read zero
+diff -ru curl-7.40.0/tests/log/gopher_ipv6_server.log curl_with_wolfssl/tests/log/gopher_ipv6_server.log
+--- curl-7.40.0/tests/log/gopher_ipv6_server.log	2015-01-21 10:10:48.000000000 -0700
++++ curl_with_wolfssl/tests/log/gopher_ipv6_server.log	2015-01-26 09:25:15.000000000 -0700
+@@ -1,3 +1,3 @@
+-10:10:48.512489 select() failed with error: (4) Interrupted system call
+-10:10:48.512768 signalled to die
+-10:10:48.513001 ========> IPv6 sws (port 9010 pid: 18538) exits with signal (15)
++09:25:15.631464 select() failed with error: (4) Interrupted system call
++09:25:15.631610 signalled to die
++09:25:15.631786 ========> IPv6 sws (port 9010 pid: 27781) exits with signal (15)
+diff -ru curl-7.40.0/tests/log/gopher_server.log curl_with_wolfssl/tests/log/gopher_server.log
+--- curl-7.40.0/tests/log/gopher_server.log	2015-01-21 10:10:48.000000000 -0700
++++ curl_with_wolfssl/tests/log/gopher_server.log	2015-01-26 09:25:15.000000000 -0700
+@@ -1,3 +1,3 @@
+-10:10:48.512490 select() failed with error: (4) Interrupted system call
+-10:10:48.513654 signalled to die
+-10:10:48.514055 ========> IPv4 sws (port 9009 pid: 18450) exits with signal (15)
++09:25:15.631409 select() failed with error: (4) Interrupted system call
++09:25:15.631573 signalled to die
++09:25:15.631826 ========> IPv4 sws (port 9009 pid: 27693) exits with signal (15)
+diff -ru curl-7.40.0/tests/log/http2_server.log curl_with_wolfssl/tests/log/http2_server.log
+--- curl-7.40.0/tests/log/http2_server.log	2015-01-21 10:10:48.000000000 -0700
++++ curl_with_wolfssl/tests/log/http2_server.log	2015-01-26 09:25:15.000000000 -0700
+@@ -1,3 +1,3 @@
+-10:10:48.513569 select() failed with error: (4) Interrupted system call
+-10:10:48.513712 signalled to die
+-10:10:48.514652 ========> IPv4 sws (port 9013 pid: 80211) exits with signal (15)
++09:25:15.630079 select() failed with error: (4) Interrupted system call
++09:25:15.630260 signalled to die
++09:25:15.630586 ========> IPv4 sws (port 9013 pid: 15133) exits with signal (15)
+diff -ru curl-7.40.0/tests/log/http_ipv6_server.log curl_with_wolfssl/tests/log/http_ipv6_server.log
+--- curl-7.40.0/tests/log/http_ipv6_server.log	2015-01-21 10:10:48.000000000 -0700
++++ curl_with_wolfssl/tests/log/http_ipv6_server.log	2015-01-26 09:25:15.000000000 -0700
+@@ -1,3 +1,3 @@
+-10:10:48.513639 select() failed with error: (4) Interrupted system call
+-10:10:48.513864 signalled to die
+-10:10:48.514042 ========> IPv6 sws (port 8994 pid: 83706) exits with signal (15)
++09:25:15.630249 select() failed with error: (4) Interrupted system call
++09:25:15.631170 signalled to die
++09:25:15.631274 ========> IPv6 sws (port 8994 pid: 18617) exits with signal (15)
+diff -ru curl-7.40.0/tests/log/http_server.log curl_with_wolfssl/tests/log/http_server.log
+--- curl-7.40.0/tests/log/http_server.log	2015-01-21 10:10:48.000000000 -0700
++++ curl_with_wolfssl/tests/log/http_server.log	2015-01-26 09:25:15.000000000 -0700
+@@ -1,3 +1,3 @@
+-10:10:48.512708 select() failed with error: (4) Interrupted system call
+-10:10:48.513197 signalled to die
+-10:10:48.513581 ========> IPv4 sws (port 8990 pid: 78370) exits with signal (15)
++09:25:15.630068 select() failed with error: (4) Interrupted system call
++09:25:15.630221 signalled to die
++09:25:15.630600 ========> IPv4 sws (port 8990 pid: 13292) exits with signal (15)
+diff -ru curl-7.40.0/tests/log/http_unix_server.log curl_with_wolfssl/tests/log/http_unix_server.log
+--- curl-7.40.0/tests/log/http_unix_server.log	2015-01-21 10:10:48.000000000 -0700
++++ curl_with_wolfssl/tests/log/http_unix_server.log	2015-01-26 09:25:15.000000000 -0700
+@@ -1,4 +1,4 @@
+-10:10:48.512571 select() failed with error: (4) Interrupted system call
+-10:10:48.512954 unlink(http.sock) = 0 (Undefined error: 0)
+-10:10:48.512994 signalled to die
+-10:10:48.513228 ========> unix sws (http.sock pid: 22180) exits with signal (15)
++09:25:15.631472 select() failed with error: (4) Interrupted system call
++09:25:15.631840 unlink(http.sock) = 0 (Undefined error: 0)
++09:25:15.631885 signalled to die
++09:25:15.632068 ========> unix sws (http.sock pid: 31423) exits with signal (15)
+diff -ru curl-7.40.0/tests/log/imap_server.log curl_with_wolfssl/tests/log/imap_server.log
+--- curl-7.40.0/tests/log/imap_server.log	2015-01-21 10:10:48.000000000 -0700
++++ curl_with_wolfssl/tests/log/imap_server.log	2015-01-26 09:25:15.000000000 -0700
+@@ -1,3 +1,3 @@
+-10:10:48.511787 Failed to read input
+-10:10:48.511920 Error: IMAP server, read zero
+-10:10:48.512043 Exited from sysread_or_die() at ./ftpserver.pl line 3000. IMAP server, read zero
++09:25:15.629476 Failed to read input
++09:25:15.629639 Error: IMAP server, read zero
++09:25:15.629736 Exited from sysread_or_die() at ./ftpserver.pl line 3000. IMAP server, read zero
+diff -ru curl-7.40.0/tests/log/pop3_server.log curl_with_wolfssl/tests/log/pop3_server.log
+--- curl-7.40.0/tests/log/pop3_server.log	2015-01-21 10:10:48.000000000 -0700
++++ curl_with_wolfssl/tests/log/pop3_server.log	2015-01-26 09:25:15.000000000 -0700
+@@ -1,3 +1,3 @@
+-10:10:48.512060 Failed to read input
+-10:10:48.512226 Error: POP3 server, read zero
+-10:10:48.512307 Exited from sysread_or_die() at ./ftpserver.pl line 3000. POP3 server, read zero
++09:25:15.629752 Failed to read input
++09:25:15.629896 Error: POP3 server, read zero
++09:25:15.629983 Exited from sysread_or_die() at ./ftpserver.pl line 3000. POP3 server, read zero
+diff -ru curl-7.40.0/tests/log/rtsp_server.log curl_with_wolfssl/tests/log/rtsp_server.log
+--- curl-7.40.0/tests/log/rtsp_server.log	2015-01-21 10:10:48.000000000 -0700
++++ curl_with_wolfssl/tests/log/rtsp_server.log	2015-01-26 09:25:15.000000000 -0700
+@@ -1,2 +1,2 @@
+-10:10:48.514492 signalled to die
+-10:10:48.514774 ========> IPv4 rtspd (port: 9007 pid: 90680) exits with signal (15)
++09:25:15.631326 signalled to die
++09:25:15.631609 ========> IPv4 rtspd (port: 9007 pid: 21568) exits with signal (15)
+diff -ru curl-7.40.0/tests/log/smtp_server.log curl_with_wolfssl/tests/log/smtp_server.log
+--- curl-7.40.0/tests/log/smtp_server.log	2015-01-21 10:10:48.000000000 -0700
++++ curl_with_wolfssl/tests/log/smtp_server.log	2015-01-26 09:25:15.000000000 -0700
+@@ -0,0 +1,2 @@
++09:25:15.629920 Failed to read input
++09:25:15.630042 Error: SMTP server, read zero
+diff -ru curl-7.40.0/tests/log/tftp_server.log curl_with_wolfssl/tests/log/tftp_server.log
+--- curl-7.40.0/tests/log/tftp_server.log	2015-01-21 10:10:48.000000000 -0700
++++ curl_with_wolfssl/tests/log/tftp_server.log	2015-01-26 09:25:15.000000000 -0700
+@@ -1,2 +1,2 @@
+-10:10:48.513688 signalled to die
+-10:10:48.514216 ========> IPv4 tftpd (port: 8997 pid: 84325) exits with signal (15)
++09:25:15.630259 signalled to die
++09:25:15.630756 ========> IPv4 tftpd (port: 8997 pid: 19238) exits with signal (15)
+diff -ru curl-7.40.0/tests/server/Makefile.in curl_with_wolfssl/tests/server/Makefile.in
+--- curl-7.40.0/tests/server/Makefile.in	2014-12-28 06:36:15.000000000 -0700
++++ curl_with_wolfssl/tests/server/Makefile.in	2015-01-21 10:24:03.000000000 -0700
+@@ -421,7 +421,7 @@
+ SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
+ USE_ARES = @USE_ARES@
+ USE_AXTLS = @USE_AXTLS@
+-USE_CYASSL = @USE_CYASSL@
++USE_WOLFSSL = @USE_WOLFSSL@
+ USE_DARWINSSL = @USE_DARWINSSL@
+ USE_GNUTLS = @USE_GNUTLS@
+ USE_GNUTLS_NETTLE = @USE_GNUTLS_NETTLE@
+Only in curl_with_wolfssl/tests: setup
+diff -ru curl-7.40.0/tests/unit/Makefile.in curl_with_wolfssl/tests/unit/Makefile.in
+--- curl-7.40.0/tests/unit/Makefile.in	2014-12-28 06:36:15.000000000 -0700
++++ curl_with_wolfssl/tests/unit/Makefile.in	2015-01-21 10:24:17.000000000 -0700
+@@ -399,7 +399,7 @@
+ SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
+ USE_ARES = @USE_ARES@
+ USE_AXTLS = @USE_AXTLS@
+-USE_CYASSL = @USE_CYASSL@
++USE_WOLFSSL = @USE_WOLFSSL@
+ USE_DARWINSSL = @USE_DARWINSSL@
+ USE_GNUTLS = @USE_GNUTLS@
+ USE_GNUTLS_NETTLE = @USE_GNUTLS_NETTLE@
