@@ -436,7 +436,7 @@ diff -ru curl-7.40.0/configure curl_with_wolfssl/configure
          elif test "x$WINSSL_ENABLED" = "x1"; then
 diff -ru curl-7.40.0/configure.ac curl_with_wolfssl/configure.ac
 --- curl-7.40.0/configure.ac	2014-12-28 06:36:05.000000000 -0700
-+++ curl_with_wolfssl/configure.ac	2015-01-26 08:53:07.000000000 -0700
++++ curl_with_wolfssl/configure.ac	2015-03-30 19:30:43.000000000 -0600
 @@ -147,7 +147,7 @@
  
  dnl
@@ -446,7 +446,21 @@ diff -ru curl-7.40.0/configure.ac curl_with_wolfssl/configure.ac
      curl_ssh_msg="no      (--with-libssh2)"
     curl_zlib_msg="no      (--with-zlib)"
      curl_gss_msg="no      (--with-gssapi)"
-@@ -1593,22 +1593,22 @@
+@@ -1579,7 +1579,7 @@
+               ])
+ 
+     dnl these can only exist if openssl exists
+-    dnl yassl doesn't have SSL_get_shutdown
++    dnl wolfssl doesn't have SSL_get_shutdown
+ 
+     AC_CHECK_FUNCS( RAND_status \
+                     RAND_screen \
+@@ -1589,26 +1589,26 @@
+                     SSL_get_shutdown \
+                     SSLv2_client_method )
+ 
+-    dnl Make an attempt to detect if this is actually yassl's headers and
++    dnl Make an attempt to detect if this is actually wolfssl's headers and
      dnl OpenSSL emulation layer. We still leave everything else believing
      dnl and acting like OpenSSL.
  
@@ -634,9 +648,78 @@ diff -ru curl-7.40.0/configure.ac curl_with_wolfssl/configure.ac
          elif test "x$AXTLS_ENABLED" = "x1"; then
            versioned_symbols_flavour="AXTLS_"
          elif test "x$WINSSL_ENABLED" = "x1"; then
+diff -ru curl-7.40.0/docs/DISTRO-DILEMMA curl_with_wolfssl/docs/DISTRO-DILEMMA
+--- curl-7.40.0/docs/DISTRO-DILEMMA	2014-11-04 05:51:16.000000000 -0700
++++ curl_with_wolfssl/docs/DISTRO-DILEMMA	2015-03-30 19:31:38.000000000 -0600
+@@ -62,18 +62,18 @@
+  I believe Debian is the first (only?) distro that provides libcurl/GnuTLS
+  packages.
+ 
+-yassl
++wolfssl
+ 
+- libcurl can get also get built to use yassl for the TLS/SSL layer. yassl is a
+- GPL[3] licensed library.
++ libcurl can get also get built to use wolfssl for the TLS/SSL layer. wolfssl
++is a GPL[3] licensed library.
+ 
+ 
+-GnuTLS vs OpenSSL vs yassl
++GnuTLS vs OpenSSL vs wolfssl
+ 
+  While these three libraries offer similar features, they are not equal.
+  libcurl does not (yet) offer a standardized stable ABI if you decide to
+  switch from using libcurl-openssl to libcurl-gnutls or vice-versa. The GnuTLS
+- and yassl support is very recent in libcurl and it has not been tested nor
++ and wolfssl support is very recent in libcurl and it has not been tested nor
+  used very extensively, while the OpenSSL equivalent code has been used and
+  thus matured since 1999.
+ 
+@@ -92,7 +92,7 @@
+    - provides crypto functions libcurl uses for NTLM
+    - libcurl can do non-blocking connects with it in 7.15.4 and later
+ 
+- yassl
++ wolfssl
+    - GPL licensed
+    - much untested and unproven in the real work by (lib)curl users so we don't
+      know a lot about restrictions or benefits from using this
+diff -ru curl-7.40.0/docs/FAQ curl_with_wolfssl/docs/FAQ
+--- curl-7.40.0/docs/FAQ	2014-12-28 06:36:05.000000000 -0700
++++ curl_with_wolfssl/docs/FAQ	2015-03-30 19:32:12.000000000 -0600
+@@ -426,7 +426,7 @@
+   backends.
+ 
+   curl can be built to use one of the following SSL alternatives: OpenSSL,
+-  GnuTLS, yassl, NSS, PolarSSL, axTLS, Secure Transport (native iOS/OS X),
++  GnuTLS, wolfssl, NSS, PolarSSL, axTLS, Secure Transport (native iOS/OS X),
+   WinSSL (native Windows) or GSKit (native IBM i). They all have their pros
+   and cons, and we try to maintain a comparison of them here:
+   http://curl.haxx.se/docs/ssl-compared.html
+diff -ru curl-7.40.0/docs/FEATURES curl_with_wolfssl/docs/FEATURES
+--- curl-7.40.0/docs/FEATURES	2014-11-30 15:21:14.000000000 -0700
++++ curl_with_wolfssl/docs/FEATURES	2015-03-30 19:32:34.000000000 -0600
+@@ -183,7 +183,7 @@
+ FOOTNOTES
+ =========
+ 
+-  *1 = requires OpenSSL, GnuTLS, NSS, yassl, axTLS, PolarSSL, WinSSL (native
++  *1 = requires OpenSSL, GnuTLS, NSS, wolfssl, axTLS, PolarSSL, WinSSL (native
+        Windows), Secure Transport (native iOS/OS X) or GSKit (native IBM i)
+   *2 = requires OpenLDAP
+   *3 = requires a GSS-API implementation (such as Heimdal or MIT Kerberos) or
+@@ -195,7 +195,7 @@
+   *7 = requires OpenSSL, NSS, GSKit, WinSSL or Secure Transport; GnuTLS, for
+        example, only supports SSLv3 and TLSv1
+   *8 = requires libssh2
+-  *9 = requires OpenSSL, GnuTLS, NSS, yassl, Secure Transport or SSPI (native
++  *9 = requires OpenSSL, GnuTLS, NSS, wolfssl, Secure Transport or SSPI (native
+        Windows)
+   *10 = requires any of the SSL libraries in (*1) above other than axTLS, which
+         does not support SSLv3
 diff -ru curl-7.40.0/docs/INSTALL curl_with_wolfssl/docs/INSTALL
 --- curl-7.40.0/docs/INSTALL	2014-12-28 06:36:05.000000000 -0700
-+++ curl_with_wolfssl/docs/INSTALL	2015-01-21 10:25:40.000000000 -0700
++++ curl_with_wolfssl/docs/INSTALL	2015-03-30 19:33:00.000000000 -0600
 @@ -127,8 +127,8 @@
       To build with GnuTLS for SSL/TLS, use both --without-ssl and
       --with-gnutls.
@@ -648,6 +731,15 @@ diff -ru curl-7.40.0/docs/INSTALL curl_with_wolfssl/docs/INSTALL
  
       To build with NSS for SSL/TLS, use both --without-ssl and --with-nss.
  
+@@ -1097,7 +1097,7 @@
+ OpenLDAP     http://www.openldap.org/
+ OpenSSL      http://www.openssl.org/
+ PolarSSL     http://polarssl.org/
+-yassl        http://www.yassl.com/
++wolfssl      http://www.wolfssl.com/
+ Zlib         http://www.zlib.net/
+ 
+ MingW        http://www.mingw.org/
 diff -ru curl-7.40.0/docs/INTERNALS curl_with_wolfssl/docs/INTERNALS
 --- curl-7.40.0/docs/INTERNALS	2014-12-02 18:16:27.000000000 -0700
 +++ curl_with_wolfssl/docs/INTERNALS	2015-01-21 10:01:23.000000000 -0700
@@ -660,6 +752,27 @@ diff -ru curl-7.40.0/docs/INTERNALS curl_with_wolfssl/docs/INTERNALS
   openldap     2.0
   MIT Kerberos 1.2.4
   GSKit        V5R3M0
+diff -ru curl-7.40.0/docs/LICENSE-MIXING curl_with_wolfssl/docs/LICENSE-MIXING
+--- curl-7.40.0/docs/LICENSE-MIXING	2014-11-04 05:51:16.000000000 -0700
++++ curl_with_wolfssl/docs/LICENSE-MIXING	2015-03-30 19:33:46.000000000 -0600
+@@ -30,7 +30,7 @@
+         are not allowed to ship binaries that link with OpenSSL that includes
+         GPL code (unless that specific GPL code includes an exception for
+         OpenSSL - a habit that is growing more and more common). If OpenSSL's
+-        licensing is a problem for you, consider using GnuTLS or yassl
++        licensing is a problem for you, consider using GnuTLS or wolfssl
+         instead.
+ 
+ GnuTLS  http://www.gnutls.org/
+@@ -40,7 +40,7 @@
+         GnuTLS itself depends on and uses other libs (libgcrypt and
+         libgpg-error) and they too are LGPL- or GPL-licensed.
+ 
+-yassl   http://www.yassl.com/
++wolfssl http://www.wolfssl.com/
+ 
+         (May be used for SSL/TLS support) Uses the GPL[1] license. If this is
+         a problem for you, consider using OpenSSL or GnuTLS instead.
 diff -ru curl-7.40.0/docs/Makefile.in curl_with_wolfssl/docs/Makefile.in
 --- curl-7.40.0/docs/Makefile.in	2014-12-28 06:36:13.000000000 -0700
 +++ curl_with_wolfssl/docs/Makefile.in	2015-01-21 10:17:59.000000000 -0700
@@ -696,6 +809,18 @@ diff -ru curl-7.40.0/docs/libcurl/Makefile.in curl_with_wolfssl/docs/libcurl/Mak
  USE_DARWINSSL = @USE_DARWINSSL@
  USE_GNUTLS = @USE_GNUTLS@
  USE_GNUTLS_NETTLE = @USE_GNUTLS_NETTLE@
+diff -ru curl-7.40.0/docs/libcurl/libcurl-tutorial.3 curl_with_wolfssl/docs/libcurl/libcurl-tutorial.3
+--- curl-7.40.0/docs/libcurl/libcurl-tutorial.3	2014-12-28 06:36:05.000000000 -0700
++++ curl_with_wolfssl/docs/libcurl/libcurl-tutorial.3	2015-03-30 19:33:21.000000000 -0600
+@@ -288,7 +288,7 @@
+ 
+  Required actions unknown.
+ 
+-yassl
++wolfssl
+ 
+  Required actions unknown.
+ 
 diff -ru curl-7.40.0/docs/libcurl/opts/Makefile.in curl_with_wolfssl/docs/libcurl/opts/Makefile.in
 --- curl-7.40.0/docs/libcurl/opts/Makefile.in	2014-12-28 06:36:13.000000000 -0700
 +++ curl_with_wolfssl/docs/libcurl/opts/Makefile.in	2015-01-21 10:24:35.000000000 -0700
@@ -756,6 +881,7 @@ diff -ru curl-7.40.0/include/curl/curl.h curl_with_wolfssl/include/curl/curl.h
    CURLSSLBACKEND_SCHANNEL = 8,
    CURLSSLBACKEND_DARWINSSL = 9,
    CURLSSLBACKEND_AXTLS = 10
+Only in curl_with_wolfssl/: kaleb_temp.txt
 diff -ru curl-7.40.0/lib/Makefile.in curl_with_wolfssl/lib/Makefile.in
 --- curl-7.40.0/lib/Makefile.in	2015-01-07 14:55:28.000000000 -0700
 +++ curl_with_wolfssl/lib/Makefile.in	2015-01-21 10:13:17.000000000 -0700
@@ -1075,18 +1201,19 @@ Only in curl-7.40.0/lib/vtls: cyassl.c
 Only in curl-7.40.0/lib/vtls: cyassl.h
 diff -ru curl-7.40.0/lib/vtls/openssl.c curl_with_wolfssl/lib/vtls/openssl.c
 --- curl-7.40.0/lib/vtls/openssl.c	2015-01-07 14:53:57.000000000 -0700
-+++ curl_with_wolfssl/lib/vtls/openssl.c	2015-01-26 08:54:55.000000000 -0700
++++ curl_with_wolfssl/lib/vtls/openssl.c	2015-03-30 19:34:19.000000000 -0600
 @@ -2930,11 +2930,11 @@
  
  size_t Curl_ossl_version(char *buffer, size_t size)
  {
 -#ifdef YASSL_VERSION
+-  /* yassl provides an OpenSSL API compatibility layer so it looks identical
 +#ifdef WOLFSSL_VERSION
-   /* yassl provides an OpenSSL API compatibility layer so it looks identical
++  /* wolfssl provides an OpenSSL API compatibility layer so it looks identical
       to OpenSSL in all other aspects */
 -  return snprintf(buffer, size, "yassl/%s", YASSL_VERSION);
 -#else /* YASSL_VERSION */
-+  return snprintf(buffer, size, "yassl/%s", WOLFSSL_VERSION);
++  return snprintf(buffer, size, "wolfssl/%s", WOLFSSL_VERSION);
 +#else /* WOLFSSL_VERSION */
  
  #if(SSLEAY_VERSION_NUMBER >= 0x905000)
@@ -1597,6 +1724,31 @@ diff -ru curl-7.40.0/tests/log/tftp_server.log curl_with_wolfssl/tests/log/tftp_
 -10:10:48.514216 ========> IPv4 tftpd (port: 8997 pid: 84325) exits with signal (15)
 +09:25:15.630259 signalled to die
 +09:25:15.630756 ========> IPv4 tftpd (port: 8997 pid: 19238) exits with signal (15)
+diff -ru curl-7.40.0/tests/runtests.pl curl_with_wolfssl/tests/runtests.pl
+--- curl-7.40.0/tests/runtests.pl	2014-12-28 06:36:05.000000000 -0700
++++ curl_with_wolfssl/tests/runtests.pl	2015-03-30 19:35:00.000000000 -0600
+@@ -231,7 +231,7 @@
+ my $has_openssl;    # built with a lib using an OpenSSL-like API
+ my $has_gnutls;     # built with GnuTLS
+ my $has_nss;        # built with NSS
+-my $has_yassl;      # built with yassl
++my $has_wolfssl;    # built with wolfssl
+ my $has_polarssl;   # built with polarssl
+ my $has_axtls;      # built with axTLS
+ my $has_winssl;     # built with WinSSL    (Secure Channel aka Schannel)
+@@ -2346,9 +2346,9 @@
+                $has_nss=1;
+                $ssllib="NSS";
+            }
+-           elsif ($libcurl =~ /yassl/i) {
+-               $has_yassl=1;
+-               $ssllib="yassl";
++           elsif ($libcurl =~ /wolfssl/i) {
++               $has_wolfssl=1;
++               $ssllib="wolfssl";
+            }
+            elsif ($libcurl =~ /polarssl/i) {
+                $has_polarssl=1;
 diff -ru curl-7.40.0/tests/server/Makefile.in curl_with_wolfssl/tests/server/Makefile.in
 --- curl-7.40.0/tests/server/Makefile.in	2014-12-28 06:36:15.000000000 -0700
 +++ curl_with_wolfssl/tests/server/Makefile.in	2015-01-21 10:24:03.000000000 -0700
